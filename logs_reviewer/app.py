@@ -10,6 +10,7 @@ import os
 import textwrap
 import webbrowser
 import zipfile
+from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -66,15 +67,50 @@ APP_HTML = """
       background: #eff6ff;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
     }
-    #output-line { margin-top: 1rem; font-weight: 600; color: #0f172a; min-height: 1.5rem; }
-    #results { margin-top: 1.25rem; display: none; }
-    .card { background: #f8fafc; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); margin-top: 0.75rem; }
-    .card h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
-    .muted { color: #475569; }
-    .error { color: #b91c1c; }
-    footer {
+    #output-line {
+      margin-top: 1rem;
+      font-weight: 600;
+      color: #0f172a;
+      min-height: 1.5rem;
+    }
+    #history {
       margin-top: 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 1rem;
+    }
+    #history h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    #history-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .history-item {
+      padding: 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
       color: #475569;
+    }
+    .history-files {
+      margin: 0.3rem 0 0.2rem 0;
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .history-summary {
+      margin: 0;
+      color: #0f172a;
       font-size: 0.95rem;
     }
   </style>
@@ -87,16 +123,9 @@ APP_HTML = """
       <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
     </div>
     <div id="output-line"></div>
-    <section id="results">
-      <div class="card">
-        <h2>Local summary</h2>
-        <p id="summary" class="muted">Drop a file to get started.</p>
-      </div>
-      <div class="card">
-        <h2>ChatGPT recommendations</h2>
-        <p id="assistant" class="muted">Waiting for input.</p>
-        <p id="assistant-error" class="error" style="display: none;"></p>
-      </div>
+    <section id="history">
+      <h2>Recent analyses</h2>
+      <ul id="history-list"></ul>
     </section>
     <footer>
       Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app.
@@ -106,10 +135,7 @@ APP_HTML = """
   <script>
     const dropZone = document.getElementById('drop-zone');
     const outputLine = document.getElementById('output-line');
-    const results = document.getElementById('results');
-    const summary = document.getElementById('summary');
-    const assistant = document.getElementById('assistant');
-    const assistantError = document.getElementById('assistant-error');
+    const historyList = document.getElementById('history-list');
 
     function setMessage(text) {
       outputLine.textContent = text;
@@ -167,25 +193,8 @@ APP_HTML = """
           return;
         }
         const data = await response.json();
-        summary.textContent = data.message || 'Analysis complete.';
-        summary.classList.remove('muted');
-        if (data.assistant) {
-          assistant.textContent = data.assistant;
-          assistant.classList.remove('muted');
-        } else {
-          assistant.textContent = data.assistant_error ? 'Unavailable.' : 'Waiting for input.';
-          assistant.classList.add('muted');
-        }
-
-        if (data.assistant_error) {
-          assistantError.textContent = data.assistant_error;
-          assistantError.style.display = 'block';
-        } else {
-          assistantError.style.display = 'none';
-        }
-
-        setMessage('Analysis complete.');
-        showResults();
+        setMessage(data.message || 'Analysis complete.');
+        renderHistory(data.history || []);
       } catch (err) {
         console.error(err);
         setMessage('Something went wrong.');
@@ -201,15 +210,60 @@ APP_HTML = """
       }
       return btoa(binary);
     }
+
+    function renderHistory(history) {
+      historyList.innerHTML = '';
+      if (!history.length) {
+        const empty = document.createElement('li');
+        empty.textContent = 'No analyses yet.';
+        empty.style.color = '#475569';
+        historyList.appendChild(empty);
+        return;
+      }
+
+      for (const entry of history) {
+        const item = document.createElement('li');
+        item.className = 'history-item';
+
+        const meta = document.createElement('div');
+        meta.className = 'history-meta';
+        const timestamp = document.createElement('span');
+        timestamp.textContent = entry.timestamp || '';
+        const count = document.createElement('span');
+        count.textContent = `${(entry.files || []).length} file(s)`;
+        meta.append(timestamp, count);
+
+        const files = document.createElement('div');
+        files.className = 'history-files';
+        files.textContent = (entry.files || []).join(', ');
+
+        const summary = document.createElement('p');
+        summary.className = 'history-summary';
+        summary.textContent = entry.message || '';
+
+        item.append(meta, files, summary);
+        historyList.appendChild(item);
+      }
+    }
+
+    renderHistory([]);
   </script>
 </body>
 </html>
 """
 
 
+HISTORY_LIMIT = 20
+_history: List[dict] = []
+
+
 def _build_sources(payload: dict) -> Iterable[LogSource]:
     files: List[dict] = payload.get("files") or []
+    if not isinstance(files, list):
+        return []
     for item in files:
+        if not isinstance(item, dict):
+            continue
         name = item.get("name", "uploaded.log")
         encoding = (item.get("encoding") or "text").lower()
         raw_content = item.get("content", "")
@@ -274,85 +328,15 @@ def _summarize(report: AnalysisReport) -> str:
     return " ".join(parts)
 
 
-def _assistant_prompt(report: AnalysisReport) -> str:
-    header = _summarize(report)
-    if not report.findings:
-        return textwrap.dedent(
-            f"""
-            Local summary: {header}
-
-            No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take.
-            """
-        ).strip()
-
-    sample = []
-    for finding in report.findings[:8]:
-        sample.append(
-            f"{finding.source}:{finding.line_no} | {finding.category} | {finding.line[:240]}"
-        )
-
-    return textwrap.dedent(
-        f"""
-        Local summary: {header}
-
-        Here are representative log excerpts:
-        {chr(10).join('- ' + line for line in sample)}
-
-        Provide 2-4 concise remediation recommendations tailored to these findings.
-        """
-    ).strip()
-
-
-def _assistant_error_from_exception(openai_module, exc: Exception) -> str:
-    if isinstance(exc, TimeoutError):
-        return "ChatGPT request timed out."
-
-    auth_error = getattr(openai_module, "AuthenticationError", None)
-    if auth_error and isinstance(exc, auth_error):
-        return "ChatGPT request failed: invalid or missing API key."
-
-    api_error = getattr(openai_module, "APIStatusError", None)
-    if api_error and isinstance(exc, api_error):
-        status_code = getattr(exc, "status_code", None)
-        if status_code:
-            return f"ChatGPT request failed (status {status_code})."
-
-    message = str(exc)
-    if len(message) > 360:
-        message = message[:360] + "..."
-    return f"ChatGPT request failed: {message or exc.__class__.__name__}."
-
-
-def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return None, "Set OPENAI_API_KEY to enable ChatGPT recommendations."
-
-    if importlib.util.find_spec("openai") is None:
-        return None, "Install the 'openai' package to request ChatGPT recommendations."
-
-    openai = importlib.import_module("openai")
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-    client = openai.OpenAI(api_key=api_key)
-    prompt = _assistant_prompt(report)
-    try:
-        completion = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that explains log issues and prioritizes actionable steps.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.2,
-            timeout=12,
-        )
-        message = completion.choices[0].message.content or ""
-        return message.strip(), None
-    except Exception as exc:  # pragma: no cover - relies on networked API
-        return None, _assistant_error_from_exception(openai, exc)
+def _record_history(sources: List[LogSource], message: str) -> List[dict]:
+    entry = {
+        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "files": [source.name for source in sources],
+        "message": message,
+    }
+    _history.insert(0, entry)
+    del _history[HISTORY_LIMIT:]
+    return list(_history)
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -375,15 +359,21 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid JSON")
             return
 
+        if not isinstance(payload, dict):
+            self.send_error(HTTPStatus.BAD_REQUEST, "Invalid payload")
+            return
+
+        files = payload.get("files")
+        if files is not None and not isinstance(files, list):
+            self.send_error(HTTPStatus.BAD_REQUEST, "Invalid files payload")
+            return
+
         sources = list(_build_sources(payload))
+
         report = analyze_logs(sources)
         message = _summarize(report)
-        assistant, assistant_error = _call_chatgpt(report)
-        response = {
-            "message": message,
-            "assistant": assistant,
-            "assistant_error": assistant_error,
-        }
+        history = _record_history(sources, message)
+        response = {"message": message, "history": history}
 
         encoded = json.dumps(response).encode("utf-8")
         self.send_response(HTTPStatus.OK)
@@ -415,4 +405,3 @@ def run_app(host: str = "127.0.0.1", port: int = 8000) -> None:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\nShutting down app...")
-
