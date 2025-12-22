@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Iterable, List
 
 from .analyzer import AnalysisReport, analyze_logs
+from .coralogix import CoralogixError, search_logs
 from .reader import LogSource, TEXT_SUFFIXES
 from .sso import ChatGPTSession, connect_chatgpt_via_sso
 
@@ -471,6 +472,24 @@ _history: List[dict] = []
 _chatgpt_session: ChatGPTSession | None = None
 
 
+def _sanitize_query(value: str | None, *, max_length: int = 2000) -> str:
+    if value is None:
+        return ""
+    return " ".join(str(value).split())[:max_length]
+
+
+def _sanitize_timeframe(payload: dict | None) -> dict:
+    if not isinstance(payload, dict):
+        raise ValueError("timeframe must be provided with 'from' and 'to' fields")
+
+    start = payload.get("from")
+    end = payload.get("to")
+    if not start or not end:
+        raise ValueError("timeframe must contain both 'from' and 'to'")
+
+    return {"from": str(start)[:128], "to": str(end)[:128]}
+
+
 def _build_sources(payload: dict) -> Iterable[LogSource]:
     files: List[dict] = payload.get("files") or []
     if not isinstance(files, list):
@@ -582,6 +601,26 @@ def _connect_chatgpt(payload: dict | None) -> dict:
     return response
 
 
+def _perform_coralogix_search(payload: dict | None) -> dict:
+    if payload is None or not isinstance(payload, dict):
+        raise ValueError("Invalid payload")
+
+    timeframe = _sanitize_timeframe(payload.get("timeframe"))
+    query = _sanitize_query(payload.get("query"))
+
+    if not query and payload.get("use_last_summary") and _history:
+        query = _sanitize_query(_history[0].get("message"))
+
+    if not query:
+        raise ValueError("query is required for Coralogix search")
+
+    filters = payload.get("filters")
+    if filters is not None and not isinstance(filters, dict):
+        raise ValueError("filters must be an object if provided")
+
+    return search_logs(query=query, timeframe=timeframe, filters=filters)
+
+
 class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         if self.path == "/chatgpt/session":
@@ -600,7 +639,7 @@ class AppHandler(BaseHTTPRequestHandler):
         self.wfile.write(APP_HTML.encode("utf-8"))
 
     def do_POST(self):  # noqa: N802
-        if self.path not in {"/analyze", "/chatgpt/login"}:
+        if self.path not in {"/analyze", "/chatgpt/login", "/coralogix-search"}:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
@@ -631,27 +670,37 @@ class AppHandler(BaseHTTPRequestHandler):
             self.wfile.write(encoded)
             return
 
-        files = payload.get("files")
-        if files is not None and not isinstance(files, list):
-            self.send_error(HTTPStatus.BAD_REQUEST, "Invalid files payload")
-            return
+        if self.path == "/coralogix-search":
+            try:
+                response = _perform_coralogix_search(payload)
+            except ValueError as exc:
+                self.send_error(HTTPStatus.BAD_REQUEST, str(exc))
+                return
+            except CoralogixError as exc:
+                self.send_error(HTTPStatus.BAD_GATEWAY, str(exc))
+                return
+        else:
+            files = payload.get("files")
+            if files is not None and not isinstance(files, list):
+                self.send_error(HTTPStatus.BAD_REQUEST, "Invalid files payload")
+                return
 
-        sources = list(_build_sources(payload))
+            sources = list(_build_sources(payload))
 
-        report = analyze_logs(sources)
-        message = _summarize(report)
-        history = _record_history(sources, message)
-        findings = [
-            {
-                "source": finding.source,
-                "line_no": finding.line_no,
-                "line": finding.line,
-                "category": finding.category,
-                "suggestion": finding.suggestion,
-            }
-            for finding in report.findings[:200]
-        ]
-        response = {"message": message, "history": history, "findings": findings}
+            report = analyze_logs(sources)
+            message = _summarize(report)
+            history = _record_history(sources, message)
+            findings = [
+                {
+                    "source": finding.source,
+                    "line_no": finding.line_no,
+                    "line": finding.line,
+                    "category": finding.category,
+                    "suggestion": finding.suggestion,
+                }
+                for finding in report.findings[:200]
+            ]
+            response = {"message": message, "history": history, "findings": findings}
 
         encoded = json.dumps(response).encode("utf-8")
         self.send_response(HTTPStatus.OK)
