@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import Iterable
 
 from .analyzer import analyze_logs
 from .app import run_app
+from .sso import ChatGPTSession, connect_chatgpt_via_sso
 from .reader import collect_sources, LogSource
 
 
-def format_report(report) -> str:
+def format_report(report, chatgpt_session: ChatGPTSession | None = None) -> str:
     lines = []
     lines.append("Log analysis report")
     lines.append("=" * 60)
@@ -30,6 +32,10 @@ def format_report(report) -> str:
             lines.append(
                 f"[{finding.category}] {finding.source}:{finding.line_no} -> {finding.line}\n  Suggestion: {finding.suggestion}"
             )
+    if chatgpt_session:
+        lines.append("\nChatGPT SSO")
+        lines.append(f"Connected account : {chatgpt_session.account}")
+        lines.append(f"Resource summary  : {chatgpt_session.resource_summary}")
     return "\n".join(lines)
 
 
@@ -44,6 +50,16 @@ def parse_args():
     parser.add_argument("--app", action="store_true", help="Launch the drag-and-drop web app")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind the web app to")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind the web app to")
+    parser.add_argument(
+        "--chatgpt-sso",
+        action="store_true",
+        help="Connect to ChatGPT via SSO before analyzing logs",
+    )
+    parser.add_argument(
+        "--chatgpt-sso-token",
+        default=os.environ.get("CHATGPT_SSO_TOKEN"),
+        help="Token or hint used when performing ChatGPT SSO (default: CHATGPT_SSO_TOKEN env)",
+    )
     return parser.parse_args()
 
 
@@ -56,8 +72,15 @@ def main():
     if not args.path:
         raise SystemExit("Path to a log file, directory, or zip archive is required unless --app is used.")
 
+    chatgpt_session = None
+    if args.chatgpt_sso:
+        try:
+            chatgpt_session = connect_chatgpt_via_sso(args.chatgpt_sso_token)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+
     report = load_and_analyze(args.path)
-    print(format_report(report))
+    print(format_report(report, chatgpt_session))
 
 
 if __name__ == "__main__":
