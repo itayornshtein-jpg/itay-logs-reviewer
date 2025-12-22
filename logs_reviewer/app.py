@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import base64
+import importlib
+import importlib.util
 import io
 import json
+import os
+import textwrap
 import webbrowser
 import zipfile
 from http import HTTPStatus
@@ -62,12 +66,12 @@ APP_HTML = """
       background: #eff6ff;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
     }
-    #output-line {
-      margin-top: 1rem;
-      font-weight: 600;
-      color: #0f172a;
-      min-height: 1.5rem;
-    }
+    #output-line { margin-top: 1rem; font-weight: 600; color: #0f172a; min-height: 1.5rem; }
+    #results { margin-top: 1.25rem; display: none; }
+    .card { background: #f8fafc; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); margin-top: 0.75rem; }
+    .card h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+    .muted { color: #475569; }
+    .error { color: #b91c1c; }
     footer {
       margin-top: 1.5rem;
       color: #475569;
@@ -83,6 +87,17 @@ APP_HTML = """
       <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
     </div>
     <div id="output-line"></div>
+    <section id="results">
+      <div class="card">
+        <h2>Local summary</h2>
+        <p id="summary" class="muted">Drop a file to get started.</p>
+      </div>
+      <div class="card">
+        <h2>ChatGPT recommendations</h2>
+        <p id="assistant" class="muted">Waiting for input.</p>
+        <p id="assistant-error" class="error" style="display: none;"></p>
+      </div>
+    </section>
     <footer>
       Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app.
     </footer>
@@ -91,9 +106,17 @@ APP_HTML = """
   <script>
     const dropZone = document.getElementById('drop-zone');
     const outputLine = document.getElementById('output-line');
+    const results = document.getElementById('results');
+    const summary = document.getElementById('summary');
+    const assistant = document.getElementById('assistant');
+    const assistantError = document.getElementById('assistant-error');
 
     function setMessage(text) {
       outputLine.textContent = text;
+    }
+
+    function showResults() {
+      results.style.display = 'block';
     }
 
     ['dragenter', 'dragover'].forEach(eventName => {
@@ -119,6 +142,9 @@ APP_HTML = """
         return;
       }
       setMessage('Processing logs...');
+      assistant.textContent = 'Waiting for ChatGPT...';
+      assistant.classList.add('muted');
+      assistantError.style.display = 'none';
       try {
         const payload = [];
         for (const file of files) {
@@ -141,7 +167,25 @@ APP_HTML = """
           return;
         }
         const data = await response.json();
-        setMessage(data.message || 'Analysis complete.');
+        summary.textContent = data.message || 'Analysis complete.';
+        summary.classList.remove('muted');
+        if (data.assistant) {
+          assistant.textContent = data.assistant;
+          assistant.classList.remove('muted');
+        } else {
+          assistant.textContent = data.assistant_error ? 'Unavailable.' : 'Waiting for input.';
+          assistant.classList.add('muted');
+        }
+
+        if (data.assistant_error) {
+          assistantError.textContent = data.assistant_error;
+          assistantError.style.display = 'block';
+        } else {
+          assistantError.style.display = 'none';
+        }
+
+        setMessage('Analysis complete.');
+        showResults();
       } catch (err) {
         console.error(err);
         setMessage('Something went wrong.');
@@ -230,6 +274,87 @@ def _summarize(report: AnalysisReport) -> str:
     return " ".join(parts)
 
 
+def _assistant_prompt(report: AnalysisReport) -> str:
+    header = _summarize(report)
+    if not report.findings:
+        return textwrap.dedent(
+            f"""
+            Local summary: {header}
+
+            No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take.
+            """
+        ).strip()
+
+    sample = []
+    for finding in report.findings[:8]:
+        sample.append(
+            f"{finding.source}:{finding.line_no} | {finding.category} | {finding.line[:240]}"
+        )
+
+    return textwrap.dedent(
+        f"""
+        Local summary: {header}
+
+        Here are representative log excerpts:
+        {chr(10).join('- ' + line for line in sample)}
+
+        Provide 2-4 concise remediation recommendations tailored to these findings.
+        """
+    ).strip()
+
+
+def _assistant_error_from_exception(openai_module, exc: Exception) -> str:
+    if isinstance(exc, TimeoutError):
+        return "ChatGPT request timed out."
+
+    auth_error = getattr(openai_module, "AuthenticationError", None)
+    if auth_error and isinstance(exc, auth_error):
+        return "ChatGPT request failed: invalid or missing API key."
+
+    api_error = getattr(openai_module, "APIStatusError", None)
+    if api_error and isinstance(exc, api_error):
+        status_code = getattr(exc, "status_code", None)
+        if status_code:
+            return f"ChatGPT request failed (status {status_code})."
+
+    message = str(exc)
+    if len(message) > 360:
+        message = message[:360] + "..."
+    return f"ChatGPT request failed: {message or exc.__class__.__name__}."
+
+
+def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None, "Set OPENAI_API_KEY to enable ChatGPT recommendations."
+
+    if importlib.util.find_spec("openai") is None:
+        return None, "Install the 'openai' package to request ChatGPT recommendations."
+
+    openai = importlib.import_module("openai")
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    client = openai.OpenAI(api_key=api_key)
+    prompt = _assistant_prompt(report)
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that explains log issues and prioritizes actionable steps.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            timeout=12,
+        )
+        message = completion.choices[0].message.content or ""
+        return message.strip(), None
+    except Exception as exc:  # pragma: no cover - relies on networked API
+        return None, _assistant_error_from_exception(openai, exc)
+
+
 class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         self.send_response(HTTPStatus.OK)
@@ -252,7 +377,13 @@ class AppHandler(BaseHTTPRequestHandler):
 
         sources = list(_build_sources(payload))
         report = analyze_logs(sources)
-        response = {"message": _summarize(report)}
+        message = _summarize(report)
+        assistant, assistant_error = _call_chatgpt(report)
+        response = {
+            "message": message,
+            "assistant": assistant,
+            "assistant_error": assistant_error,
+        }
 
         encoded = json.dumps(response).encode("utf-8")
         self.send_response(HTTPStatus.OK)
