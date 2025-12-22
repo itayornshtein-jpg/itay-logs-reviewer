@@ -6,6 +6,7 @@ import io
 import json
 import webbrowser
 import zipfile
+from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -68,9 +69,44 @@ APP_HTML = """
       color: #0f172a;
       min-height: 1.5rem;
     }
-    footer {
+    #history {
       margin-top: 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 1rem;
+    }
+    #history h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    #history-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .history-item {
+      padding: 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
       color: #475569;
+    }
+    .history-files {
+      margin: 0.3rem 0 0.2rem 0;
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .history-summary {
+      margin: 0;
+      color: #0f172a;
       font-size: 0.95rem;
     }
   </style>
@@ -83,6 +119,10 @@ APP_HTML = """
       <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
     </div>
     <div id="output-line"></div>
+    <section id="history">
+      <h2>Recent analyses</h2>
+      <ul id="history-list"></ul>
+    </section>
     <footer>
       Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app.
     </footer>
@@ -91,6 +131,7 @@ APP_HTML = """
   <script>
     const dropZone = document.getElementById('drop-zone');
     const outputLine = document.getElementById('output-line');
+    const historyList = document.getElementById('history-list');
 
     function setMessage(text) {
       outputLine.textContent = text;
@@ -142,6 +183,7 @@ APP_HTML = """
         }
         const data = await response.json();
         setMessage(data.message || 'Analysis complete.');
+        renderHistory(data.history || []);
       } catch (err) {
         console.error(err);
         setMessage('Something went wrong.');
@@ -157,15 +199,60 @@ APP_HTML = """
       }
       return btoa(binary);
     }
+
+    function renderHistory(history) {
+      historyList.innerHTML = '';
+      if (!history.length) {
+        const empty = document.createElement('li');
+        empty.textContent = 'No analyses yet.';
+        empty.style.color = '#475569';
+        historyList.appendChild(empty);
+        return;
+      }
+
+      for (const entry of history) {
+        const item = document.createElement('li');
+        item.className = 'history-item';
+
+        const meta = document.createElement('div');
+        meta.className = 'history-meta';
+        const timestamp = document.createElement('span');
+        timestamp.textContent = entry.timestamp || '';
+        const count = document.createElement('span');
+        count.textContent = `${(entry.files || []).length} file(s)`;
+        meta.append(timestamp, count);
+
+        const files = document.createElement('div');
+        files.className = 'history-files';
+        files.textContent = (entry.files || []).join(', ');
+
+        const summary = document.createElement('p');
+        summary.className = 'history-summary';
+        summary.textContent = entry.message || '';
+
+        item.append(meta, files, summary);
+        historyList.appendChild(item);
+      }
+    }
+
+    renderHistory([]);
   </script>
 </body>
 </html>
 """
 
 
+HISTORY_LIMIT = 20
+_history: List[dict] = []
+
+
 def _build_sources(payload: dict) -> Iterable[LogSource]:
     files: List[dict] = payload.get("files") or []
+    if not isinstance(files, list):
+        return []
     for item in files:
+        if not isinstance(item, dict):
+            continue
         name = item.get("name", "uploaded.log")
         encoding = (item.get("encoding") or "text").lower()
         raw_content = item.get("content", "")
@@ -230,6 +317,17 @@ def _summarize(report: AnalysisReport) -> str:
     return " ".join(parts)
 
 
+def _record_history(sources: List[LogSource], message: str) -> List[dict]:
+    entry = {
+        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "files": [source.name for source in sources],
+        "message": message,
+    }
+    _history.insert(0, entry)
+    del _history[HISTORY_LIMIT:]
+    return list(_history)
+
+
 class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         self.send_response(HTTPStatus.OK)
@@ -250,9 +348,21 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid JSON")
             return
 
+        if not isinstance(payload, dict):
+            self.send_error(HTTPStatus.BAD_REQUEST, "Invalid payload")
+            return
+
+        files = payload.get("files")
+        if files is not None and not isinstance(files, list):
+            self.send_error(HTTPStatus.BAD_REQUEST, "Invalid files payload")
+            return
+
         sources = list(_build_sources(payload))
+
         report = analyze_logs(sources)
-        response = {"message": _summarize(report)}
+        message = _summarize(report)
+        history = _record_history(sources, message)
+        response = {"message": message, "history": history}
 
         encoded = json.dumps(response).encode("utf-8")
         self.send_response(HTTPStatus.OK)
@@ -284,4 +394,3 @@ def run_app(host: str = "127.0.0.1", port: int = 8000) -> None:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\nShutting down app...")
-
