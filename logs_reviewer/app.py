@@ -73,6 +73,62 @@ APP_HTML = """
       color: #0f172a;
       min-height: 1.5rem;
     }
+    #results {
+      margin-top: 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 1rem;
+    }
+    #results h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    #findings-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #0b1224;
+      color: #e2e8f0;
+      padding: 1rem;
+      min-height: 140px;
+      max-height: 320px;
+      overflow: auto;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    .finding-line {
+      margin: 0.1rem 0;
+      font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.9rem;
+      line-height: 1.3;
+      padding: 0.35rem 0.4rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      display: grid;
+      gap: 0.25rem;
+    }
+    .finding-meta {
+      display: flex;
+      gap: 0.4rem;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+    }
+    .finding-source {
+      font-weight: 700;
+      color: #bfdbfe;
+    }
+    .finding-category {
+      padding: 0.05rem 0.45rem;
+      border-radius: 999px;
+      background: #fef3c7;
+      color: #854d0e;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+    .finding-text {
+      margin: 0;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
     #history {
       margin-top: 1.5rem;
       border-top: 1px solid #e2e8f0;
@@ -123,6 +179,13 @@ APP_HTML = """
       <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
     </div>
     <div id="output-line"></div>
+    <section id="results">
+      <h2>Detected error lines</h2>
+      <div id="findings-box">
+        <p id="findings-empty" style="margin: 0; color: #cbd5e1;">Drop logs to see detected errors.</p>
+        <div id="findings-list"></div>
+      </div>
+    </section>
     <section id="history">
       <h2>Recent analyses</h2>
       <ul id="history-list"></ul>
@@ -135,6 +198,8 @@ APP_HTML = """
   <script>
     const dropZone = document.getElementById('drop-zone');
     const outputLine = document.getElementById('output-line');
+    const findingsList = document.getElementById('findings-list');
+    const findingsEmpty = document.getElementById('findings-empty');
     const historyList = document.getElementById('history-list');
 
     function setMessage(text) {
@@ -168,9 +233,6 @@ APP_HTML = """
         return;
       }
       setMessage('Processing logs...');
-      assistant.textContent = 'Waiting for ChatGPT...';
-      assistant.classList.add('muted');
-      assistantError.style.display = 'none';
       try {
         const payload = [];
         for (const file of files) {
@@ -190,14 +252,17 @@ APP_HTML = """
         });
         if (!response.ok) {
           setMessage('Could not analyze logs.');
+          renderFindings([]);
           return;
         }
         const data = await response.json();
         setMessage(data.message || 'Analysis complete.');
+        renderFindings(data.findings || []);
         renderHistory(data.history || []);
       } catch (err) {
         console.error(err);
         setMessage('Something went wrong.');
+        renderFindings([]);
       }
     });
 
@@ -246,6 +311,45 @@ APP_HTML = """
       }
     }
 
+    function renderFindings(findings) {
+      findingsList.innerHTML = '';
+      const hasFindings = Array.isArray(findings) && findings.length > 0;
+      findingsEmpty.style.display = hasFindings ? 'none' : 'block';
+
+      if (!hasFindings) {
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      for (const finding of findings) {
+        const item = document.createElement('div');
+        item.className = 'finding-line';
+
+        const meta = document.createElement('div');
+        meta.className = 'finding-meta';
+
+        const source = document.createElement('span');
+        source.className = 'finding-source';
+        source.textContent = `${finding.source || 'unknown'}:${finding.line_no ?? '?'}`;
+
+        const category = document.createElement('span');
+        category.className = 'finding-category';
+        category.textContent = finding.category || 'error';
+
+        meta.append(source, category);
+
+        const text = document.createElement('p');
+        text.className = 'finding-text';
+        text.textContent = finding.line || '';
+
+        item.append(meta, text);
+        fragment.appendChild(item);
+      }
+
+      findingsList.appendChild(fragment);
+    }
+
+    renderFindings([]);
     renderHistory([]);
   </script>
 </body>
@@ -373,7 +477,17 @@ class AppHandler(BaseHTTPRequestHandler):
         report = analyze_logs(sources)
         message = _summarize(report)
         history = _record_history(sources, message)
-        response = {"message": message, "history": history}
+        findings = [
+            {
+                "source": finding.source,
+                "line_no": finding.line_no,
+                "line": finding.line,
+                "category": finding.category,
+                "suggestion": finding.suggestion,
+            }
+            for finding in report.findings[:200]
+        ]
+        response = {"message": message, "history": history, "findings": findings}
 
         encoded = json.dumps(response).encode("utf-8")
         self.send_response(HTTPStatus.OK)
