@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=65.5"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logs-reviewer"
+version = "0.1.0"
+description = "Lightweight log reviewer CLI and drag-and-drop app"
+readme = "README.md"
+authors = [{name = "Itay"}]
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+include = ["logs_reviewer"]

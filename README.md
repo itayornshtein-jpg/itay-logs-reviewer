@@ -9,9 +9,10 @@ A lightweight log reviewer that can scan plain text log files, directories of lo
 - Summarizes findings by category and highlights the most repeated messages.
 
 ## Usage
-Run the CLI using Python 3 (use `python3` if `python` is unavailable on your system):
+Install the package locally so it can be imported from anywhere, then run the CLI (use `python3` if `python` is unavailable on your system):
 
 ```bash
+python3 -m pip install .
 python3 -m logs_reviewer <path-to-log-file-or-zip-or-directory>
 ```
 
