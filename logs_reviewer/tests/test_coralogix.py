@@ -35,13 +35,18 @@ def test_search_logs_sends_payload(monkeypatch):
     monkeypatch.setattr(coralogix, "urlopen", fake_urlopen)
 
     result = coralogix.search_logs(
-        "error", {"from": "2024-01-01T00:00:00Z", "to": "2024-01-01T01:00:00Z"}, filters={"severity": "error"}, timeout=5
+        "error",
+        {"from": "2024-01-01T00:00:00Z", "to": "2024-01-01T01:00:00Z"},
+        filters={"severity": "error"},
+        pagination={"limit": 15, "offset": 5},
+        timeout=5,
     )
 
     assert result["hits"] == 1
     assert captured["url"] == "https://example.coralogix.com/api/v1/logs/search"
     assert captured["data"]["query"] == "error"
     assert captured["data"]["filters"] == {"severity": "error"}
+    assert captured["data"]["pagination"] == {"limit": 15, "offset": 5}
     assert captured["timeout"] == 5
     assert captured["headers"]["Authorization"].endswith("test-key")
 
