@@ -21,6 +21,14 @@ Example:
 python -m logs_reviewer ./sample_logs.zip
 ```
 
+### Drag-and-drop app
+
+Launch the lightweight local web app if you prefer a graphical interface. Drop one or more log files (or a zip archive of logs) into the box and read the quick summary beneath it.
+
+```bash
+python -m logs_reviewer --app
+```
+
 The command prints a summary including counts by category, top repeated messages, and sample findings with suggestions.
 
 ## Development
