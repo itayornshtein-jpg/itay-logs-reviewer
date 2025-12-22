@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import base64
+import importlib
+import importlib.util
 import io
 import json
+import os
+import textwrap
 import webbrowser
 import zipfile
 from datetime import datetime
@@ -137,6 +141,10 @@ APP_HTML = """
       outputLine.textContent = text;
     }
 
+    function showResults() {
+      results.style.display = 'block';
+    }
+
     ['dragenter', 'dragover'].forEach(eventName => {
       dropZone.addEventListener(eventName, evt => {
         evt.preventDefault();
@@ -160,6 +168,9 @@ APP_HTML = """
         return;
       }
       setMessage('Processing logs...');
+      assistant.textContent = 'Waiting for ChatGPT...';
+      assistant.classList.add('muted');
+      assistantError.style.display = 'none';
       try {
         const payload = [];
         for (const file of files) {
