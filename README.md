@@ -16,6 +16,14 @@ python3 -m pip install .
 python3 -m logs_reviewer <path-to-log-file-or-zip-or-directory>
 ```
 
+To connect to ChatGPT via SSO before analyzing logs (for example to ensure the
+tool uses your ChatGPT account resources), add `--chatgpt-sso` and pass a token
+or set `CHATGPT_SSO_TOKEN`:
+
+```bash
+python3 -m logs_reviewer ./sample_logs.zip --chatgpt-sso --chatgpt-sso-token "sso-token-hint"
+```
+
 Example:
 
 ```bash
