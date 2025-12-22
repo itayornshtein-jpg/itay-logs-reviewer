@@ -18,6 +18,7 @@ from typing import Iterable, List
 
 from .analyzer import AnalysisReport, analyze_logs
 from .reader import LogSource, TEXT_SUFFIXES
+from .sso import ChatGPTSession, connect_chatgpt_via_sso
 
 
 APP_HTML = """
@@ -48,10 +49,77 @@ APP_HTML = """
       box-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
       color: #0f172a;
     }
+    p {
+      color: #1f2937;
+      line-height: 1.5;
+    }
     h1 {
       margin-top: 0;
       font-size: 1.8rem;
       letter-spacing: -0.02em;
+    }
+    #session-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #eef2ff, #fff);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.08);
+    }
+    #session-card h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.2rem;
+      color: #312e81;
+    }
+    #session-card form {
+      display: grid;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    #session-card label {
+      font-weight: 600;
+      color: #111827;
+    }
+    #session-card input[type="text"] {
+      padding: 0.6rem 0.75rem;
+      border: 1px solid #c7d2fe;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: #fff;
+      color: #111827;
+    }
+    #session-card button {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.7rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 120ms ease-in-out, transform 120ms ease-in-out;
+    }
+    #session-card button:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+    #session-card button:hover:not(:disabled) {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+    #session-status {
+      margin: 0.25rem 0 0 0;
+      color: #334155;
+      font-size: 0.95rem;
+    }
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
     }
     #drop-zone {
       border: 2px dashed #334155;
@@ -174,6 +242,16 @@ APP_HTML = """
 <body>
   <main>
     <h1>Itay Logs Reviewer</h1>
+    <section id="session-card">
+      <h2>ChatGPT login</h2>
+      <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
+      <form id="login-form">
+        <label for="sso-token">ChatGPT SSO token</label>
+        <input id="sso-token" type="text" name="sso-token" placeholder="Enter token or leave blank to use CHATGPT_SSO_TOKEN" autocomplete="off" />
+        <button type="submit" id="login-button">Connect to ChatGPT</button>
+        <p id="session-status" class="muted">Not connected.</p>
+      </form>
+    </section>
     <div id="drop-zone">
       <p style="margin: 0; font-size: 1.1rem;">Drag one or more log files here</p>
       <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
@@ -201,6 +279,10 @@ APP_HTML = """
     const findingsList = document.getElementById('findings-list');
     const findingsEmpty = document.getElementById('findings-empty');
     const historyList = document.getElementById('history-list');
+    const loginForm = document.getElementById('login-form');
+    const loginButton = document.getElementById('login-button');
+    const ssoToken = document.getElementById('sso-token');
+    const sessionStatus = document.getElementById('session-status');
 
     function setMessage(text) {
       outputLine.textContent = text;
@@ -309,6 +391,33 @@ APP_HTML = """
         item.append(meta, files, summary);
         historyList.appendChild(item);
       }
+      }
+
+      renderHistory([]);
+
+    async function refreshSession() {
+      try {
+        const response = await fetch('/chatgpt/session');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.connected) {
+          sessionStatus.textContent = 'Not connected.';
+          sessionStatus.className = '';
+          return;
+        }
+        const badge = document.createElement('span');
+        badge.className = 'pill';
+        badge.textContent = data.account || 'ChatGPT account';
+        sessionStatus.innerHTML = '';
+        sessionStatus.append(badge);
+        const details = document.createElement('div');
+        details.textContent = data.resource_summary || 'Connected to ChatGPT.';
+        details.style.marginTop = '0.35rem';
+        sessionStatus.append(details);
+      } catch (err) {
+        console.error(err);
+        sessionStatus.textContent = 'Could not load ChatGPT session status.';
+      }
     }
 
     function renderFindings(findings) {
@@ -359,6 +468,7 @@ APP_HTML = """
 
 HISTORY_LIMIT = 20
 _history: List[dict] = []
+_chatgpt_session: ChatGPTSession | None = None
 
 
 def _build_sources(payload: dict) -> Iterable[LogSource]:
@@ -443,15 +553,54 @@ def _record_history(sources: List[LogSource], message: str) -> List[dict]:
     return list(_history)
 
 
+def _session_payload() -> dict:
+    if not _chatgpt_session:
+        return {"connected": False}
+
+    return {
+        "connected": True,
+        "account": _chatgpt_session.account,
+        "resource_summary": _chatgpt_session.resource_summary,
+        "token_hint": _chatgpt_session.token_hint,
+        "connected_at": _chatgpt_session.connected_at.isoformat(timespec="seconds") + "Z",
+    }
+
+
+def _connect_chatgpt(payload: dict | None) -> dict:
+    if payload is None or not isinstance(payload, dict):
+        raise ValueError("Invalid payload")
+
+    token = payload.get("token")
+    resources = payload.get("resources") if isinstance(payload.get("resources"), dict) else None
+
+    session = connect_chatgpt_via_sso(token=token, resources=resources)
+    global _chatgpt_session
+    _chatgpt_session = session
+
+    response = _session_payload()
+    response["message"] = f"Connected to ChatGPT as {session.account}"
+    return response
+
+
 class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
+        if self.path == "/chatgpt/session":
+            payload = _session_payload()
+            encoded = json.dumps(payload).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+            return
+
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
         self.wfile.write(APP_HTML.encode("utf-8"))
 
     def do_POST(self):  # noqa: N802
-        if self.path != "/analyze":
+        if self.path not in {"/analyze", "/chatgpt/login"}:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
@@ -465,6 +614,21 @@ class AppHandler(BaseHTTPRequestHandler):
 
         if not isinstance(payload, dict):
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid payload")
+            return
+
+        if self.path == "/chatgpt/login":
+            try:
+                response = _connect_chatgpt(payload)
+            except ValueError as exc:
+                self.send_error(HTTPStatus.BAD_REQUEST, str(exc))
+                return
+
+            encoded = json.dumps(response).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
             return
 
         files = payload.get("files")
