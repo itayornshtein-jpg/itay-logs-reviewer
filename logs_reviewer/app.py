@@ -900,34 +900,6 @@ def _sanitize_api_key(value: str | None, *, max_length: int = 256) -> str | None
     return cleaned[:max_length]
 
 
-def _sanitize_bool(value: bool | str | None) -> bool | None:
-    if value is None:
-        return None
-
-    if isinstance(value, bool):
-        return value
-
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered in {"1", "true", "yes", "on"}:
-            return True
-        if lowered in {"0", "false", "no", "off"}:
-            return False
-
-    raise ValueError("verify_tls must be a boolean value if provided")
-
-
-def _sanitize_ca_bundle(value: str | None, *, max_length: int = 512) -> str | None:
-    if value is None:
-        return None
-
-    cleaned = str(value).strip()
-    if not cleaned:
-        raise ValueError("ca_bundle cannot be empty")
-
-    return cleaned[:max_length]
-
-
 def _build_sources(payload: dict) -> Iterable[LogSource]:
     files: List[dict] = payload.get("files") or []
     if not isinstance(files, list):
@@ -1047,8 +1019,6 @@ def _perform_coralogix_search(payload: dict | None) -> dict:
     query = _sanitize_query(payload.get("query"))
     pagination = _sanitize_pagination(payload.get("pagination"))
     api_key = _sanitize_api_key(payload.get("api_key"))
-    verify_tls = _sanitize_bool(payload.get("verify_tls"))
-    ca_bundle = _sanitize_ca_bundle(payload.get("ca_bundle"))
 
     if not query and payload.get("use_last_summary") and _history:
         query = _sanitize_query(_history[0].get("message"))
@@ -1066,8 +1036,6 @@ def _perform_coralogix_search(payload: dict | None) -> dict:
         filters=filters,
         pagination=pagination,
         api_key=api_key,
-        verify=verify_tls,
-        ca_bundle=ca_bundle,
     )
 
 
