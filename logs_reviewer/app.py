@@ -136,6 +136,19 @@ APP_HTML = """
       background: #eff6ff;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
     }
+    #assistant-status {
+      margin-top: 0.5rem;
+      color: #475569;
+    }
+    #assistant-error {
+      margin-top: 0.25rem;
+      color: #b91c1c;
+      display: none;
+      font-weight: 600;
+    }
+    .muted {
+      opacity: 0.8;
+    }
     #output-line {
       margin-top: 1rem;
       font-weight: 600;
