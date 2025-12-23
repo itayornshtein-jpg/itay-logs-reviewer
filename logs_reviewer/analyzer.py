@@ -10,7 +10,10 @@ from .reader import LogSource
 
 ERROR_PATTERNS = [
     ("traceback", re.compile(r"Traceback \(most recent call last\)", re.IGNORECASE)),
-    ("exception", re.compile(r"\b[a-zA-Z_.]*Exception\b", re.IGNORECASE)),
+    (
+        "exception",
+        re.compile(r"\b[a-zA-Z_.]+(?:Exception|Error)\b", re.IGNORECASE),
+    ),
     ("error", re.compile(r"\bERROR\b", re.IGNORECASE)),
     ("critical", re.compile(r"\bCRITICAL\b", re.IGNORECASE)),
 ]
