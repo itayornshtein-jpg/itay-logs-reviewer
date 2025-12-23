@@ -136,229 +136,13 @@ APP_HTML = """
       background: #eff6ff;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
     }
-    #assistant-status {
-      margin-top: 0.5rem;
-      color: #475569;
-    }
-    #assistant-error {
-      margin-top: 0.25rem;
-      color: #b91c1c;
-      display: none;
-      font-weight: 600;
-    }
-    .muted {
-      opacity: 0.8;
-    }
-    #output-line {
-      margin-top: 1rem;
-      font-weight: 600;
-      color: #0f172a;
-      min-height: 1.5rem;
-    }
-    #results {
-      margin-top: 1.5rem;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 1rem;
-    }
-    #results h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.1rem;
-      color: #0f172a;
-    }
-    #findings-box {
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      background: #0b1224;
-      color: #e2e8f0;
-      padding: 1rem;
-      min-height: 140px;
-      max-height: 320px;
-      overflow: auto;
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
-    .finding-line {
-      margin: 0.1rem 0;
-      font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
-      font-size: 0.9rem;
-      line-height: 1.3;
-      padding: 0.35rem 0.4rem;
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.04);
-      display: grid;
-      gap: 0.25rem;
-    }
-    .finding-meta {
-      display: flex;
-      gap: 0.4rem;
-      color: #cbd5e1;
-      font-size: 0.85rem;
-    }
-    .finding-source {
-      font-weight: 700;
-      color: #bfdbfe;
-    }
-    .finding-category {
-      padding: 0.05rem 0.45rem;
-      border-radius: 999px;
-      background: #fef3c7;
-      color: #854d0e;
-      font-weight: 700;
-      font-size: 0.8rem;
-    }
-    .finding-text {
-      margin: 0;
-      color: #e2e8f0;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    #coralogix {
-      margin-top: 1.5rem;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 1.25rem;
-    }
-    #coralogix h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.1rem;
-      color: #0f172a;
-    }
-    #coralogix p.description {
-      margin-top: 0;
-      color: #475569;
-    }
-    #coralogix form {
-      display: grid;
-      gap: 0.6rem;
-      margin-top: 0.5rem;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 1rem;
-    }
-    #coralogix form label {
-      font-weight: 600;
-      color: #111827;
-    }
-    #coralogix .field-row {
-      display: grid;
-      gap: 0.5rem;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    }
-    #coralogix input[type="text"],
-    #coralogix input[type="password"],
-    #coralogix input[type="datetime-local"],
-    #coralogix select {
-      padding: 0.6rem 0.75rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      font-size: 1rem;
-      background: #fff;
-      color: #0f172a;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    #coralogix button {
-      justify-self: start;
-      background: #0ea5e9;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 0.7rem 1rem;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 120ms ease-in-out, transform 120ms ease-in-out;
-    }
-    #coralogix button:disabled {
-      background: #bae6fd;
-      cursor: not-allowed;
-    }
-    #coralogix button:hover:not(:disabled) {
-      background: #0284c7;
-      transform: translateY(-1px);
-    }
-    #coralogix-status {
-      margin: 0;
-      color: #0f172a;
-    }
-    #coralogix-results {
-      margin-top: 0.75rem;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 0.85rem;
-      background: #fff;
-    }
-    #coralogix-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: #475569;
-      font-size: 0.95rem;
-      margin-bottom: 0.5rem;
-      gap: 0.5rem;
-    }
-    #coralogix-list {
-      display: grid;
-      gap: 0.6rem;
-    }
-    .coralogix-record {
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 0.65rem 0.75rem;
-      background: linear-gradient(180deg, #0b1224, #0f172a);
-      color: #e2e8f0;
-    }
-    .coralogix-record .record-meta {
-      display: flex;
-      gap: 0.35rem;
-      align-items: center;
-      margin-bottom: 0.35rem;
-      font-size: 0.9rem;
-      color: #cbd5e1;
-    }
-    .record-meta .timestamp {
-      font-weight: 700;
-      color: #bfdbfe;
-    }
-    .record-meta .severity {
-      padding: 0.05rem 0.45rem;
-      border-radius: 999px;
-      background: #fef08a;
-      color: #854d0e;
-      font-weight: 700;
-      font-size: 0.8rem;
-    }
-    .coralogix-record pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
-      font-size: 0.9rem;
-    }
-    #coralogix-pagination {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 0.75rem;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    #coralogix-pagination button {
-      background: #475569;
-      color: #fff;
-      padding: 0.5rem 0.8rem;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      transition: opacity 120ms ease-in-out;
-    }
-    #coralogix-pagination button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    #coralogix-pagination .page-summary {
-      color: #475569;
-      font-size: 0.95rem;
-    }
-    #history {
+    #output-line { margin-top: 1rem; font-weight: 600; color: #0f172a; min-height: 1.5rem; }
+    #results { margin-top: 1.25rem; display: none; }
+    .card { background: #f8fafc; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); margin-top: 0.75rem; }
+    .card h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+    .muted { color: #475569; }
+    .error { color: #b91c1c; }
+    footer {
       margin-top: 1.5rem;
       border-top: 1px solid #e2e8f0;
       padding-top: 1rem;
@@ -419,63 +203,15 @@ APP_HTML = """
     </div>
     <div id="output-line"></div>
     <section id="results">
-      <h2>Detected error lines</h2>
-      <div id="findings-box">
-        <p id="findings-empty" style="margin: 0; color: #cbd5e1;">Drop logs to see detected errors.</p>
-        <div id="findings-list"></div>
+      <div class="card">
+        <h2>Local summary</h2>
+        <p id="summary" class="muted">Drop a file to get started.</p>
       </div>
-    </section>
-    <section id="coralogix">
-      <h2>Search Coralogix</h2>
-      <p class="description">Query your centralized logs remotely using your configured Coralogix credentials or a key you provide below (kept only in this session).</p>
-      <form id="coralogix-form">
-        <label for="coralogix-api-key">Coralogix API key</label>
-        <input id="coralogix-api-key" type="password" name="api-key" placeholder="Paste your Coralogix API key" autocomplete="off" />
-        <label for="coralogix-query">Search query</label>
-        <input id="coralogix-query" type="text" name="query" placeholder="service:error OR exception" autocomplete="off" />
-        <div class="field-row">
-          <div>
-            <label for="coralogix-from">From</label>
-            <input id="coralogix-from" type="datetime-local" name="from" />
-          </div>
-          <div>
-            <label for="coralogix-to">To</label>
-            <input id="coralogix-to" type="datetime-local" name="to" />
-          </div>
-        </div>
-        <div class="field-row">
-          <div>
-            <label for="coralogix-limit">Results per page</label>
-            <select id="coralogix-limit" name="limit">
-              <option value="10">10</option>
-              <option value="20" selected>20</option>
-              <option value="50">50</option>
-            </select>
-          </div>
-          <label style="align-self: end; display: flex; gap: 0.35rem; align-items: center;">
-            <input id="coralogix-use-summary" type="checkbox" />
-            Use last summary when query is empty
-          </label>
-        </div>
-        <button type="submit" id="coralogix-button">Search Coralogix</button>
-        <p id="coralogix-status">Enter a query and timeframe to search.</p>
-      </form>
-      <div id="coralogix-results">
-        <div id="coralogix-meta">
-          <span id="coralogix-count">No results yet.</span>
-          <span id="coralogix-hit-count"></span>
-        </div>
-        <div id="coralogix-list"></div>
-        <div id="coralogix-pagination">
-          <button type="button" id="coralogix-prev">Previous</button>
-          <span class="page-summary" id="coralogix-page"></span>
-          <button type="button" id="coralogix-next">Next</button>
-        </div>
+      <div class="card">
+        <h2>ChatGPT recommendations</h2>
+        <p id="assistant" class="muted">Waiting for input.</p>
+        <p id="assistant-error" class="error" style="display: none;"></p>
       </div>
-    </section>
-    <section id="history">
-      <h2>Recent analyses</h2>
-      <ul id="history-list"></ul>
     </section>
     <footer>
       Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app. Remote queries
@@ -486,32 +222,10 @@ APP_HTML = """
   <script>
     const dropZone = document.getElementById('drop-zone');
     const outputLine = document.getElementById('output-line');
-    const findingsList = document.getElementById('findings-list');
-    const findingsEmpty = document.getElementById('findings-empty');
-    const historyList = document.getElementById('history-list');
-    const loginForm = document.getElementById('login-form');
-    const loginButton = document.getElementById('login-button');
-    const ssoToken = document.getElementById('sso-token');
-    const sessionStatus = document.getElementById('session-status');
-    const coralogixForm = document.getElementById('coralogix-form');
-    const coralogixApiKey = document.getElementById('coralogix-api-key');
-    const coralogixQuery = document.getElementById('coralogix-query');
-    const coralogixFrom = document.getElementById('coralogix-from');
-    const coralogixTo = document.getElementById('coralogix-to');
-    const coralogixLimit = document.getElementById('coralogix-limit');
-    const coralogixUseSummary = document.getElementById('coralogix-use-summary');
-    const coralogixStatus = document.getElementById('coralogix-status');
-    const coralogixList = document.getElementById('coralogix-list');
-    const coralogixCount = document.getElementById('coralogix-count');
-    const coralogixHitCount = document.getElementById('coralogix-hit-count');
-    const coralogixPageLabel = document.getElementById('coralogix-page');
-    const coralogixPrev = document.getElementById('coralogix-prev');
-    const coralogixNext = document.getElementById('coralogix-next');
-    const coralogixButton = document.getElementById('coralogix-button');
-
-    let coralogixRecords = [];
-    let coralogixHits = 0;
-    let coralogixPage = 1;
+    const results = document.getElementById('results');
+    const summary = document.getElementById('summary');
+    const assistant = document.getElementById('assistant');
+    const assistantError = document.getElementById('assistant-error');
 
     function setMessage(text) {
       outputLine.textContent = text;
@@ -544,6 +258,9 @@ APP_HTML = """
         return;
       }
       setMessage('Processing logs...');
+      assistant.textContent = 'Waiting for ChatGPT...';
+      assistant.classList.add('muted');
+      assistantError.style.display = 'none';
       try {
         const payload = [];
         for (const file of files) {
@@ -567,9 +284,25 @@ APP_HTML = """
           return;
         }
         const data = await response.json();
-        setMessage(data.message || 'Analysis complete.');
-        renderFindings(data.findings || []);
-        renderHistory(data.history || []);
+        summary.textContent = data.message || 'Analysis complete.';
+        summary.classList.remove('muted');
+        if (data.assistant) {
+          assistant.textContent = data.assistant;
+          assistant.classList.remove('muted');
+        } else {
+          assistant.textContent = data.assistant_error ? 'Unavailable.' : 'Waiting for input.';
+          assistant.classList.add('muted');
+        }
+
+        if (data.assistant_error) {
+          assistantError.textContent = data.assistant_error;
+          assistantError.style.display = 'block';
+        } else {
+          assistantError.style.display = 'none';
+        }
+
+        setMessage('Analysis complete.');
+        showResults();
       } catch (err) {
         console.error(err);
         setMessage('Something went wrong.');
@@ -984,72 +717,69 @@ def _summarize(report: AnalysisReport) -> str:
     return " ".join(parts)
 
 
-def _record_history(sources: List[LogSource], message: str) -> List[dict]:
-    entry = {
-        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        "files": [source.name for source in sources],
-        "message": message,
-    }
-    _history.insert(0, entry)
-    del _history[HISTORY_LIMIT:]
-    return list(_history)
+def _assistant_prompt(report: AnalysisReport) -> str:
+    header = _summarize(report)
+    if not report.findings:
+        return textwrap.dedent(
+            f"""
+            Local summary: {header}
+
+            No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take.
+            """
+        ).strip()
+
+    sample = []
+    for finding in report.findings[:8]:
+        sample.append(
+            f"{finding.source}:{finding.line_no} | {finding.category} | {finding.line[:240]}"
+        )
+
+    return textwrap.dedent(
+        f"""
+        Local summary: {header}
+
+        Here are representative log excerpts:
+        {chr(10).join('- ' + line for line in sample)}
+
+        Provide 2-4 concise remediation recommendations tailored to these findings.
+        """
+    ).strip()
 
 
-def _session_payload() -> dict:
-    if not _chatgpt_session:
-        return {"connected": False}
+def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None, "Set OPENAI_API_KEY to enable ChatGPT recommendations."
 
-    return {
-        "connected": True,
-        "account": _chatgpt_session.account,
-        "resource_summary": _chatgpt_session.resource_summary,
-        "token_hint": _chatgpt_session.token_hint,
-        "connected_at": _chatgpt_session.connected_at.isoformat(timespec="seconds") + "Z",
-    }
+    if importlib.util.find_spec("openai") is None:
+        return None, "Install the 'openai' package to request ChatGPT recommendations."
 
+    openai = importlib.import_module("openai")
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-def _connect_chatgpt(payload: dict | None) -> dict:
-    if payload is None or not isinstance(payload, dict):
-        raise ValueError("Invalid payload")
+    prompt = _assistant_prompt(report)
+    try:
+        client_cls = getattr(openai, "OpenAI", None)
+        if client_cls is None:
+            return None, "Upgrade the 'openai' package (>=1.0) to request ChatGPT recommendations."
 
-    token = payload.get("token")
-    resources = payload.get("resources") if isinstance(payload.get("resources"), dict) else None
-
-    session = connect_chatgpt_via_sso(token=token, resources=resources)
-    global _chatgpt_session
-    _chatgpt_session = session
-
-    response = _session_payload()
-    response["message"] = f"Connected to ChatGPT as {session.account}"
-    return response
-
-
-def _perform_coralogix_search(payload: dict | None) -> dict:
-    if payload is None or not isinstance(payload, dict):
-        raise ValueError("Invalid payload")
-
-    timeframe = _sanitize_timeframe(payload.get("timeframe"))
-    query = _sanitize_query(payload.get("query"))
-    pagination = _sanitize_pagination(payload.get("pagination"))
-    api_key = _sanitize_api_key(payload.get("api_key"))
-
-    if not query and payload.get("use_last_summary") and _history:
-        query = _sanitize_query(_history[0].get("message"))
-
-    if not query:
-        raise ValueError("query is required for Coralogix search")
-
-    filters = payload.get("filters")
-    if filters is not None and not isinstance(filters, dict):
-        raise ValueError("filters must be an object if provided")
-
-    return search_logs(
-        query=query,
-        timeframe=timeframe,
-        filters=filters,
-        pagination=pagination,
-        api_key=api_key,
-    )
+        client = client_cls(api_key=api_key)
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that explains log issues and prioritizes actionable steps.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            timeout=12,
+        )
+        message = completion.choices[0].message.content or ""
+        return message.strip(), None
+    except Exception as exc:  # pragma: no cover - relies on networked API
+        return None, f"ChatGPT request failed: {exc}"[:400]
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -1082,56 +812,15 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid JSON")
             return
 
-        if not isinstance(payload, dict):
-            self.send_error(HTTPStatus.BAD_REQUEST, "Invalid payload")
-            return
-
-        if self.path == "/chatgpt/login":
-            try:
-                response = _connect_chatgpt(payload)
-            except ValueError as exc:
-                self.send_error(HTTPStatus.BAD_REQUEST, str(exc))
-                return
-
-            encoded = json.dumps(response).encode("utf-8")
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(encoded)))
-            self.end_headers()
-            self.wfile.write(encoded)
-            return
-
-        if self.path == "/coralogix-search":
-            try:
-                response = _perform_coralogix_search(payload)
-            except ValueError as exc:
-                self.send_error(HTTPStatus.BAD_REQUEST, str(exc))
-                return
-            except CoralogixError as exc:
-                self.send_error(HTTPStatus.BAD_GATEWAY, str(exc))
-                return
-        else:
-            files = payload.get("files")
-            if files is not None and not isinstance(files, list):
-                self.send_error(HTTPStatus.BAD_REQUEST, "Invalid files payload")
-                return
-
-            sources = list(_build_sources(payload))
-
-            report = analyze_logs(sources)
-            message = _summarize(report)
-            history = _record_history(sources, message)
-            findings = [
-                {
-                    "source": finding.source,
-                    "line_no": finding.line_no,
-                    "line": finding.line,
-                    "category": finding.category,
-                    "suggestion": finding.suggestion,
-                }
-                for finding in report.findings[:200]
-            ]
-            response = {"message": message, "history": history, "findings": findings}
+        sources = list(_build_sources(payload))
+        report = analyze_logs(sources)
+        message = _summarize(report)
+        assistant, assistant_error = _call_chatgpt(report)
+        response = {
+            "message": message,
+            "assistant": assistant,
+            "assistant_error": assistant_error,
+        }
 
         encoded = json.dumps(response).encode("utf-8")
         self.send_response(HTTPStatus.OK)
