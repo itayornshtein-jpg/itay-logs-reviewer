@@ -205,7 +205,7 @@ APP_HTML = """
     <section id="results">
       <div class="card">
         <h2>Local summary</h2>
-        <p id="summary" class="muted">Drop a file to get started.</p>
+        <div id="summary" class="muted">Drop a file to get started.</div>
       </div>
       <div class="card">
         <h2>ChatGPT recommendations</h2>
@@ -229,6 +229,101 @@ APP_HTML = """
 
     function setMessage(text) {
       outputLine.textContent = text;
+    }
+
+    function renderLocalSummary(localSummary, fallbackText) {
+      summary.innerHTML = '';
+
+      if (!localSummary) {
+        summary.textContent = fallbackText || 'Analysis complete.';
+        summary.classList.remove('muted');
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      const addSection = (title, body) => {
+        const section = document.createElement('div');
+        section.style.marginTop = '0.75rem';
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        heading.style.margin = '0 0 0.35rem 0';
+        heading.style.fontSize = '1rem';
+        heading.style.color = '#0f172a';
+        section.append(heading);
+        section.append(body);
+        fragment.append(section);
+      };
+
+      if (localSummary.overview) {
+        const overview = document.createElement('p');
+        overview.textContent = localSummary.overview;
+        overview.style.margin = '0 0 0.5rem 0';
+        fragment.append(overview);
+      }
+
+      if (localSummary.resize_actions && localSummary.resize_actions.length) {
+        const list = document.createElement('ul');
+        list.style.margin = '0';
+        for (const action of localSummary.resize_actions) {
+          const item = document.createElement('li');
+          const title = document.createElement('strong');
+          title.textContent = action.uuid;
+          item.append(title);
+          if (action.entries && action.entries.length) {
+            const inner = document.createElement('ul');
+            for (const entry of action.entries) {
+              const entryItem = document.createElement('li');
+              entryItem.textContent = `${entry.status} (line ${entry.line_no}): ${entry.line}`;
+              inner.append(entryItem);
+            }
+            item.append(inner);
+          }
+          list.append(item);
+        }
+        addSection('Resize actions (last 5 per UUID)', list);
+      }
+
+      const collectorLines = localSummary.collector_tail || [];
+      const collectorBody = document.createElement('pre');
+      collectorBody.textContent = collectorLines.length ? collectorLines.join('\n') : 'No collectorHC.log entries found.';
+      collectorBody.style.whiteSpace = 'pre-wrap';
+      collectorBody.style.margin = '0';
+      addSection('collectorHC.log (last 5 lines)', collectorBody);
+
+      const agentLines = localSummary.agent_tail || [];
+      const agentBody = document.createElement('pre');
+      agentBody.textContent = agentLines.length ? agentLines.join('\n') : 'No agent.log entries found.';
+      agentBody.style.whiteSpace = 'pre-wrap';
+      agentBody.style.margin = '0';
+      addSection('agent.log (last 15 lines)', agentBody);
+
+      const uniqueErrors = localSummary.unique_errors || [];
+      const errorList = document.createElement('ul');
+      errorList.style.margin = '0';
+      if (uniqueErrors.length) {
+        for (const finding of uniqueErrors) {
+          const li = document.createElement('li');
+          li.textContent = `${finding.source}:${finding.line_no} — ${finding.line}`;
+          errorList.append(li);
+        }
+      } else {
+        const empty = document.createElement('p');
+        empty.textContent = 'No error patterns detected across logs.';
+        empty.style.margin = '0';
+        addSection('Unique errors', empty);
+      }
+      if (uniqueErrors.length) {
+        addSection('Unique errors', errorList);
+      }
+
+      if (!fragment.children.length) {
+        summary.textContent = fallbackText || 'Analysis complete.';
+        summary.classList.remove('muted');
+        return;
+      }
+
+      summary.append(fragment);
+      summary.classList.remove('muted');
     }
 
     function showResults() {
@@ -284,8 +379,7 @@ APP_HTML = """
           return;
         }
         const data = await response.json();
-        summary.textContent = data.message || 'Analysis complete.';
-        summary.classList.remove('muted');
+        renderLocalSummary(data.local_summary, data.message);
         if (data.assistant) {
           assistant.textContent = data.assistant;
           assistant.classList.remove('muted');
@@ -646,6 +740,42 @@ def _sanitize_api_key(value: str | None, *, max_length: int = 256) -> str | None
     return cleaned[:max_length]
 
 
+def _record_history(sources: Iterable[LogSource], message: str) -> None:
+    entry = {
+        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "files": [source.name for source in sources],
+        "message": str(message),
+    }
+    _history.insert(0, entry)
+    if len(_history) > HISTORY_LIMIT:
+        del _history[HISTORY_LIMIT:]
+
+
+def _session_payload() -> dict:
+    if _chatgpt_session is None:
+        return {"connected": False}
+
+    return {
+        "connected": True,
+        "account": _chatgpt_session.account,
+        "resource_summary": _chatgpt_session.resource_summary,
+        "token_hint": _chatgpt_session.token_hint,
+        "connected_at": _chatgpt_session.connected_at.isoformat(),
+    }
+
+
+def _connect_chatgpt(payload: dict) -> dict:
+    token = None
+    resources = None
+    if isinstance(payload, dict):
+        token = payload.get("token")
+        resources = payload.get("resources")
+
+    global _chatgpt_session
+    _chatgpt_session = connect_chatgpt_via_sso(token, resources)
+    return _session_payload()
+
+
 def _build_sources(payload: dict) -> Iterable[LogSource]:
     files: List[dict] = payload.get("files") or []
     if not isinstance(files, list):
@@ -699,6 +829,35 @@ def _sources_from_zip(name: str, raw_content: str, encoding: str) -> Iterable[Lo
         return
 
 
+def _perform_coralogix_search(payload: dict) -> dict:
+    if not isinstance(payload, dict):
+        raise ValueError("payload must be an object")
+
+    timeframe = _sanitize_timeframe(payload.get("timeframe"))
+    filters = payload.get("filters")
+    pagination = _sanitize_pagination(payload.get("pagination"))
+
+    query = _sanitize_query(payload.get("query"))
+    if payload.get("use_last_summary") and _history:
+        query = _history[0].get("message", query) or query
+
+    api_key = _sanitize_api_key(payload.get("api_key"))
+    timeout = payload.get("timeout", 10)
+    try:
+        timeout_value: int | float = float(timeout)
+    except (TypeError, ValueError):
+        raise ValueError("timeout must be numeric") from None
+
+    return search_logs(
+        query=query,
+        timeframe=timeframe,
+        filters=filters if filters else None,
+        pagination=pagination,
+        api_key=api_key,
+        timeout=timeout_value,
+    )
+
+
 def _summarize(report: AnalysisReport) -> str:
     parts: List[str] = [f"Scanned {report.scanned_sources} source(s)."]
     if report.total_findings == 0:
@@ -715,6 +874,33 @@ def _summarize(report: AnalysisReport) -> str:
         top_message, occurrences = report.top_messages[0]
         parts.append(f"Top message appeared {occurrences}x: {top_message[:180]}.")
     return " ".join(parts)
+
+
+def _local_summary_payload(report: AnalysisReport) -> dict:
+    resize_actions = []
+    for uuid, entries in sorted(report.resize_actions.items()):
+        resize_actions.append(
+            {
+                "uuid": uuid,
+                "entries": [
+                    {"line_no": entry.line_no, "status": entry.status, "line": entry.line}
+                    for entry in entries[-5:]
+                ],
+            }
+        )
+
+    unique_errors = [
+        {"source": finding.source, "line_no": finding.line_no, "line": finding.line}
+        for finding in report.unique_errors
+    ]
+
+    return {
+        "overview": _summarize(report),
+        "resize_actions": resize_actions,
+        "collector_tail": report.collector_tail[-5:],
+        "agent_tail": report.agent_tail[-15:],
+        "unique_errors": unique_errors,
+    }
 
 
 def _assistant_prompt(report: AnalysisReport) -> str:
@@ -812,14 +998,49 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid JSON")
             return
 
+        if self.path == "/chatgpt/login":
+            try:
+                payload = _connect_chatgpt(payload)
+            except ValueError as exc:
+                self.send_error(HTTPStatus.BAD_REQUEST, str(exc))
+                return
+
+            encoded = json.dumps(payload).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+            return
+
+        if self.path == "/coralogix-search":
+            try:
+                result = _perform_coralogix_search(payload)
+            except ValueError as exc:
+                self.send_error(HTTPStatus.BAD_REQUEST, str(exc))
+                return
+            except CoralogixError as exc:
+                self.send_error(HTTPStatus.BAD_GATEWAY, str(exc))
+                return
+
+            encoded = json.dumps(result).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+            return
+
         sources = list(_build_sources(payload))
         report = analyze_logs(sources)
         message = _summarize(report)
+        _record_history(sources, message)
         assistant, assistant_error = _call_chatgpt(report)
         response = {
             "message": message,
             "assistant": assistant,
             "assistant_error": assistant_error,
+            "local_summary": _local_summary_payload(report),
         }
 
         encoded = json.dumps(response).encode("utf-8")
