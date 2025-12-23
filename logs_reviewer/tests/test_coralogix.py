@@ -64,7 +64,7 @@ def test_perform_coralogix_search_uses_history(monkeypatch):
 
     captured: dict = {}
 
-    def fake_search_logs(query, timeframe, filters=None):
+    def fake_search_logs(query, timeframe, filters=None, **_):
         captured["query"] = query
         captured["timeframe"] = timeframe
         captured["filters"] = filters
@@ -78,3 +78,25 @@ def test_perform_coralogix_search_uses_history(monkeypatch):
     assert result["hits"] == 0
     assert captured["query"] == "latest summary"
     assert captured["timeframe"]["from"].startswith("2024-01-01")
+
+
+def test_perform_coralogix_search_forwards_api_key(monkeypatch):
+    captured: dict = {}
+
+    def fake_search_logs(**kwargs):
+        captured.update(kwargs)
+        return {"hits": 0, "records": []}
+
+    monkeypatch.setattr(app, "search_logs", fake_search_logs)
+
+    payload = {
+        "query": "error",
+        "timeframe": {"from": "2024-01-01T00:00:00Z", "to": "2024-01-01T01:00:00Z"},
+        "api_key": "user-provided-key",
+    }
+
+    result = app._perform_coralogix_search(payload)
+
+    assert result["hits"] == 0
+    assert captured["api_key"] == "user-provided-key"
+    assert captured["query"] == "error"
