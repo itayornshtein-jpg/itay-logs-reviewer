@@ -297,7 +297,7 @@ APP_HTML = """
       agentBody.style.margin = '0';
       addSection('agent.log (last 15 lines)', agentBody);
 
-      const uniqueErrors = localSummary.unique_errors || [];
+      const uniqueErrors = localSummary.errors || localSummary.unique_errors || [];
       const errorList = document.createElement('ul');
       errorList.style.margin = '0';
       if (uniqueErrors.length) {
@@ -310,10 +310,10 @@ APP_HTML = """
         const empty = document.createElement('p');
         empty.textContent = 'No error patterns detected across logs.';
         empty.style.margin = '0';
-        addSection('Unique errors', empty);
+        addSection('Errors', empty);
       }
       if (uniqueErrors.length) {
-        addSection('Unique errors', errorList);
+        addSection('Errors', errorList);
       }
 
       if (!fragment.children.length) {
@@ -889,7 +889,7 @@ def _local_summary_payload(report: AnalysisReport) -> dict:
             }
         )
 
-    unique_errors = [
+    error_entries = [
         {"source": finding.source, "line_no": finding.line_no, "line": finding.line}
         for finding in report.unique_errors
     ]
@@ -899,7 +899,8 @@ def _local_summary_payload(report: AnalysisReport) -> dict:
         "resize_actions": resize_actions,
         "collector_tail": report.collector_tail[-5:],
         "agent_tail": report.agent_tail[-15:],
-        "unique_errors": unique_errors,
+        "unique_errors": error_entries,
+        "errors": error_entries,
     }
 
 
