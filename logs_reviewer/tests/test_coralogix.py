@@ -23,11 +23,12 @@ def test_search_logs_sends_payload(monkeypatch):
         def read(self) -> bytes:
             return self._body
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context):
         captured["url"] = request.full_url
         captured["data"] = json.loads(request.data.decode("utf-8"))
         captured["headers"] = request.headers
         captured["timeout"] = timeout
+        captured["context"] = context
         return FakeResponse(b'{"hits": 1, "records": []}')
 
     monkeypatch.setenv("CORALOGIX_API_KEY", "test-key")
@@ -49,6 +50,7 @@ def test_search_logs_sends_payload(monkeypatch):
     assert captured["data"]["pagination"] == {"limit": 15, "offset": 5}
     assert captured["timeout"] == 5
     assert captured["headers"]["Authorization"].endswith("test-key")
+    assert captured["context"]
 
 
 def test_search_logs_validates_timeframe(monkeypatch):
