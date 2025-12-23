@@ -314,9 +314,13 @@ def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
     openai = importlib.import_module("openai")
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    client = openai.OpenAI(api_key=api_key)
     prompt = _assistant_prompt(report)
     try:
+        client_cls = getattr(openai, "OpenAI", None)
+        if client_cls is None:
+            return None, "Upgrade the 'openai' package (>=1.0) to request ChatGPT recommendations."
+
+        client = client_cls(api_key=api_key)
         completion = client.chat.completions.create(
             model=model,
             messages=[
