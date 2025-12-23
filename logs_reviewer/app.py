@@ -24,15 +24,15 @@ from .sso import ChatGPTSession, connect_chatgpt_via_sso
 
 APP_HTML = """
 <!doctype html>
-<html lang="en">
+<html lang=\"en\">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset=\"UTF-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
   <title>Itay Logs Reviewer</title>
   <style>
     :root {
-      color-scheme: light dark;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;
       --page-bg: radial-gradient(circle at 20% 20%, #f1f5f9, #cbd5e1);
       --panel-bg: rgba(255, 255, 255, 0.9);
       --panel-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
@@ -59,7 +59,8 @@ APP_HTML = """
       --footer-border: #e2e8f0;
     }
 
-    :root[data-theme="dark"] {
+    :root[data-theme=\"dark\"] {
+      color-scheme: dark;
       --page-bg: radial-gradient(circle at 20% 20%, #0f172a, #1e293b);
       --panel-bg: rgba(15, 23, 42, 0.9);
       --panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
@@ -94,8 +95,9 @@ APP_HTML = """
       box-sizing: border-box;
       color: var(--text-body);
     }
+
     main {
-      max-width: 720px;
+      max-width: 960px;
       margin: 0 auto;
       background: var(--panel-bg);
       padding: 1.5rem;
@@ -103,89 +105,86 @@ APP_HTML = """
       box-shadow: var(--panel-shadow);
       color: var(--text-body);
     }
+
     .page-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
+      flex-wrap: wrap;
     }
+
     .page-header button {
       background: none;
       border: 1px solid var(--border-color);
       color: var(--text-body);
       border-radius: 999px;
-      padding: 0.4rem 0.9rem;
+      padding: 0.5rem 1rem;
       cursor: pointer;
       font-weight: 600;
       transition: border-color 120ms ease-in-out, transform 120ms ease-in-out;
     }
+
     .page-header button:hover {
       border-color: var(--accent);
       transform: translateY(-1px);
     }
+
+    h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      letter-spacing: -0.02em;
+      color: var(--text-strong);
+    }
+
     p {
       color: var(--text-body);
       line-height: 1.5;
     }
-    h1 {
-      margin-top: 0;
-      font-size: 1.8rem;
-      letter-spacing: -0.02em;
-      color: var(--text-strong);
-    }
-    #session-card {
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      background: linear-gradient(180deg, color-mix(in srgb, var(--panel-bg), transparent 10%), var(--panel-bg));
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.08);
-    }
-    #session-card h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.2rem;
-      color: var(--text-strong);
-    }
-    #session-card form {
+
+    .card-grid {
       display: grid;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 1rem;
     }
-    #session-card label {
-      font-weight: 600;
+
+    .card,
+    .panel {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+      color: var(--text-body);
+    }
+
+    .panel h2,
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.35rem;
       color: var(--text-strong);
     }
-    #session-card input[type="text"] {
-      padding: 0.6rem 0.75rem;
-      border: 1px solid var(--input-border);
-      border-radius: 10px;
-      font-size: 1rem;
-      background: var(--input-bg);
-      color: var(--input-text);
-    }
-    #session-card button {
-      background: var(--accent);
-      color: var(--card-bg);
-      border: none;
-      border-radius: 10px;
-      padding: 0.7rem 1rem;
-      font-size: 1rem;
+
+    #drop-zone {
+      border: 2px dashed var(--drop-border);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      background: var(--drop-bg);
+      color: var(--drop-text);
+      transition: all 150ms ease-in-out;
       cursor: pointer;
-      transition: background 120ms ease-in-out, transform 120ms ease-in-out;
     }
-    #session-card button:disabled {
-      background: var(--accent-disabled);
-      cursor: not-allowed;
+
+    #drop-zone.hover {
+      border-color: var(--drop-hover-border);
+      background: var(--drop-hover-bg);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
     }
-    #session-card button:hover:not(:disabled) {
-      background: var(--accent-hover);
-      transform: translateY(-1px);
-    }
-    #session-status {
-      margin: 0.25rem 0 0 0;
-      color: var(--text-muted);
-      font-size: 0.95rem;
-    }
+
+    .muted { color: var(--text-muted); }
+    .error { color: var(--error); }
+
     .pill {
       display: inline-block;
       padding: 0.25rem 0.6rem;
@@ -196,319 +195,76 @@ APP_HTML = """
       font-size: 0.9rem;
       margin-top: 0.25rem;
     }
-    #drop-zone {
-      border: 2px dashed var(--drop-border);
-      border-radius: 12px;
-      padding: 2rem;
-      text-align: center;
-      background: var(--drop-bg);
-      color: var(--drop-text);
-      transition: all 150ms ease-in-out;
-    }
-    #drop-zone.hover {
-      border-color: var(--drop-hover-border);
-      background: var(--drop-hover-bg);
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
-    }
-    #output-line { margin-top: 1rem; font-weight: 600; color: var(--text-strong); min-height: 1.5rem; }
-    #results { margin-top: 1.25rem; display: none; }
-    .card { background: var(--card-bg); border-radius: 12px; padding: 1rem; box-shadow: var(--card-shadow); margin-top: 0.75rem; color: var(--text-body); }
-    .muted { color: var(--text-muted); }
-    .error { color: var(--error); }
-    footer {
-      margin-top: 1.5rem;
-      border-top: 1px solid var(--footer-border);
-      padding-top: 1rem;
-      color: var(--text-muted);
-    }
-    #history h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.1rem;
-      color: var(--text-strong);
-    }
-    #history-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+
+    .session-grid {
       display: grid;
-      gap: 0.5rem;
+      gap: 0.75rem;
     }
-    .history-item {
-      padding: 0.75rem;
-      border: 1px solid var(--border-color);
+
+    .session-grid label { font-weight: 600; color: var(--text-strong); }
+
+    .session-grid input[type=\"text\"] {
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--input-border);
       border-radius: 10px;
-      background: var(--card-bg);
+      font-size: 1rem;
+      background: var(--input-bg);
+      color: var(--input-text);
     }
-    .history-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.9rem;
-      color: var(--text-muted);
+
+    .primary-btn {
+      background: var(--accent);
+      color: var(--card-bg);
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 120ms ease-in-out, transform 120ms ease-in-out;
     }
-    .history-files {
-      margin: 0.3rem 0 0.2rem 0;
-      color: var(--text-strong);
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-    .history-summary {
-      margin: 0;
-      color: var(--text-strong);
-      font-size: 0.95rem;
-    }
+
+    .primary-btn:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
+    .primary-btn:disabled { background: var(--accent-disabled); cursor: not-allowed; }
+
+    .list-reset { list-style: none; padding: 0; margin: 0; }
+
+    .history-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg); }
+    .history-meta { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted); }
+    .history-files { margin: 0.3rem 0 0.2rem 0; color: var(--text-strong); font-weight: 600; font-size: 0.95rem; }
+
+    .finding-line { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.7rem; margin-bottom: 0.5rem; background: var(--panel-bg); box-shadow: var(--card-shadow); }
+    .finding-meta { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted); }
+    .finding-source { font-weight: 700; color: var(--text-strong); }
+    .finding-category { background: var(--pill-bg); color: var(--pill-text); border-radius: 999px; padding: 0.15rem 0.55rem; }
+    .finding-text { margin: 0.35rem 0 0 0; color: var(--text-strong); }
+
+    .coralogix-grid { display: grid; gap: 0.75rem; }
+    .coralogix-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem; }
+    .coralogix-row input, .coralogix-row select, .coralogix-row textarea { width: 100%; padding: 0.5rem 0.6rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-text); box-sizing: border-box; }
+    .coralogix-row textarea { min-height: 120px; resize: vertical; }
+
+    .coralogix-record { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem; background: var(--card-bg); box-shadow: var(--card-shadow); }
+    .record-meta { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted); gap: 0.75rem; }
+    .record-meta .timestamp { font-weight: 700; color: var(--text-strong); }
+    .record-meta .severity { background: var(--pill-bg); color: var(--pill-text); border-radius: 999px; padding: 0.2rem 0.5rem; }
+    .record-body { white-space: pre-wrap; margin: 0.4rem 0 0 0; }
+
+    footer { margin-top: 1.5rem; border-top: 1px solid var(--footer-border); padding-top: 1rem; color: var(--text-muted); }
   </style>
 </head>
 <body>
   <main>
-    <div class="page-header">
-      <h1>Itay Logs Reviewer</h1>
-      <button type="button" id="theme-toggle" aria-label="Toggle theme">Toggle theme</button>
-    </div>
-    <section id="session-card">
-      <h2>ChatGPT login</h2>
-      <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
-      <form id="login-form">
-        <label for="sso-token">ChatGPT SSO token</label>
-        <input id="sso-token" type="text" name="sso-token" placeholder="Enter token or leave blank to use CHATGPT_SSO_TOKEN" autocomplete="off" />
-        <button type="submit" id="login-button">Connect to ChatGPT</button>
-        <p id="session-status" class="muted">Not connected.</p>
-      </form>
-    </section>
-    <div id="drop-zone">
-      <p style="margin: 0; font-size: 1.1rem;">Drag one or more log files here</p>
-      <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
-    </div>
-    <div id="output-line"></div>
-    <section id="results">
-      <div class="card">
-        <h2>Local summary</h2>
-        <div id="summary" class="muted">Drop a file to get started.</div>
-      </div>
-      <div class="card">
-        <h2>ChatGPT recommendations</h2>
-        <p id="assistant" class="muted">Waiting for input.</p>
-        <p id="assistant-error" class="error" style="display: none;"></p>
-      </div>
-    </section>
-    <footer>
-      Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app. Remote queries
-      use Coralogix via your configured credentials.
-    </footer>
+    <div id=\"root\"></div>
   </main>
 
-  <script>
-    const dropZone = document.getElementById('drop-zone');
-    const outputLine = document.getElementById('output-line');
-    const results = document.getElementById('results');
-    const summary = document.getElementById('summary');
-    const assistant = document.getElementById('assistant');
-    const assistantError = document.getElementById('assistant-error');
-    const themeToggle = document.getElementById('theme-toggle');
+  <script crossorigin src=\"https://unpkg.com/react@18/umd/react.production.min.js\"></script>
+  <script crossorigin src=\"https://unpkg.com/react-dom@18/umd/react-dom.production.min.js\"></script>
+  <script src=\"https://unpkg.com/@babel/standalone/babel.min.js\"></script>
+  <script type=\"text/babel\" data-presets=\"env,react\">
+    const { useEffect, useMemo, useRef, useState } = React;
+    const ACCEPTED_TYPES = '.log,.txt,.out,.err,.zip';
 
-    function applyTheme(theme) {
-      const root = document.documentElement;
-      const nextTheme = theme === 'dark' ? 'dark' : 'light';
-      root.setAttribute('data-theme', nextTheme);
-      localStorage.setItem('theme', nextTheme);
-      if (themeToggle) {
-        themeToggle.textContent = nextTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
-        themeToggle.setAttribute('aria-pressed', nextTheme === 'dark');
-      }
-    }
-
-    function initTheme() {
-      const stored = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      applyTheme(stored || (prefersDark ? 'dark' : 'light'));
-    }
-
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-        applyTheme(current === 'dark' ? 'light' : 'dark');
-      });
-    }
-
-    initTheme();
-
-    function setMessage(text) {
-      outputLine.textContent = text;
-    }
-
-    function renderLocalSummary(localSummary, fallbackText) {
-      summary.innerHTML = '';
-
-      if (!localSummary) {
-        summary.textContent = fallbackText || 'Analysis complete.';
-        summary.classList.remove('muted');
-        return;
-      }
-
-      const fragment = document.createDocumentFragment();
-      const addSection = (title, body) => {
-        const section = document.createElement('div');
-        section.style.marginTop = '0.75rem';
-        const heading = document.createElement('h3');
-        heading.textContent = title;
-        heading.style.margin = '0 0 0.35rem 0';
-        heading.style.fontSize = '1rem';
-        heading.style.color = 'var(--text-strong)';
-        section.append(heading);
-        section.append(body);
-        fragment.append(section);
-      };
-
-      if (localSummary.overview) {
-        const overview = document.createElement('p');
-        overview.textContent = localSummary.overview;
-        overview.style.margin = '0 0 0.5rem 0';
-        fragment.append(overview);
-      }
-
-      if (localSummary.resize_actions && localSummary.resize_actions.length) {
-        const list = document.createElement('ul');
-        list.style.margin = '0';
-        for (const action of localSummary.resize_actions) {
-          const item = document.createElement('li');
-          const title = document.createElement('strong');
-          title.textContent = action.uuid;
-          item.append(title);
-          if (action.entries && action.entries.length) {
-            const inner = document.createElement('ul');
-            for (const entry of action.entries) {
-              const entryItem = document.createElement('li');
-              entryItem.textContent = `${entry.status} (line ${entry.line_no}): ${entry.line}`;
-              inner.append(entryItem);
-            }
-            item.append(inner);
-          }
-          list.append(item);
-        }
-        addSection('Resize actions (last 5 per UUID)', list);
-      }
-
-      const collectorLines = localSummary.collector_tail || [];
-      const collectorBody = document.createElement('pre');
-      collectorBody.textContent = collectorLines.length ? collectorLines.join('\n') : 'No collectorHC.log entries found.';
-      collectorBody.style.whiteSpace = 'pre-wrap';
-      collectorBody.style.margin = '0';
-      addSection('collectorHC.log (last 5 lines)', collectorBody);
-
-      const agentLines = localSummary.agent_tail || [];
-      const agentBody = document.createElement('pre');
-      agentBody.textContent = agentLines.length ? agentLines.join('\n') : 'No agent.log entries found.';
-      agentBody.style.whiteSpace = 'pre-wrap';
-      agentBody.style.margin = '0';
-      addSection('agent.log (last 15 lines)', agentBody);
-
-      const uniqueErrors = localSummary.errors || localSummary.unique_errors || [];
-      const errorList = document.createElement('ul');
-      errorList.style.margin = '0';
-      if (uniqueErrors.length) {
-        for (const finding of uniqueErrors) {
-          const li = document.createElement('li');
-          li.textContent = `${finding.source}:${finding.line_no} — ${finding.line}`;
-          errorList.append(li);
-        }
-      } else {
-        const empty = document.createElement('p');
-        empty.textContent = 'No error patterns detected across logs.';
-        empty.style.margin = '0';
-        addSection('Errors', empty);
-      }
-      if (uniqueErrors.length) {
-        addSection('Errors', errorList);
-      }
-
-      if (!fragment.children.length) {
-        summary.textContent = fallbackText || 'Analysis complete.';
-        summary.classList.remove('muted');
-        return;
-      }
-
-      summary.append(fragment);
-      summary.classList.remove('muted');
-    }
-
-    function showResults() {
-      results.style.display = 'block';
-    }
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropZone.addEventListener(eventName, evt => {
-        evt.preventDefault();
-        evt.stopPropagation();
-        dropZone.classList.add('hover');
-      });
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, evt => {
-        evt.preventDefault();
-        evt.stopPropagation();
-        dropZone.classList.remove('hover');
-      });
-    });
-
-    dropZone.addEventListener('drop', async evt => {
-      const files = Array.from(evt.dataTransfer.files || []);
-      if (!files.length) {
-        setMessage('No files detected.');
-        return;
-      }
-      setMessage('Processing logs...');
-      assistant.textContent = 'Waiting for ChatGPT...';
-      assistant.classList.add('muted');
-      assistantError.style.display = 'none';
-      try {
-        const payload = [];
-        for (const file of files) {
-          if (file.name.toLowerCase().endsWith('.zip')) {
-            const buffer = await file.arrayBuffer();
-            const binary = bufferToBase64(buffer);
-            payload.push({ name: file.name, content: binary, encoding: 'base64' });
-          } else {
-            const content = await file.text();
-            payload.push({ name: file.name, content, encoding: 'text' });
-          }
-        }
-        const response = await fetch('/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files: payload }),
-        });
-        if (!response.ok) {
-          setMessage('Could not analyze logs.');
-          renderFindings([]);
-          return;
-        }
-        const data = await response.json();
-        renderLocalSummary(data.local_summary, data.message);
-        if (data.assistant) {
-          assistant.textContent = data.assistant;
-          assistant.classList.remove('muted');
-        } else {
-          assistant.textContent = data.assistant_error ? 'Unavailable.' : 'Waiting for input.';
-          assistant.classList.add('muted');
-        }
-
-        if (data.assistant_error) {
-          assistantError.textContent = data.assistant_error;
-          assistantError.style.display = 'block';
-        } else {
-          assistantError.style.display = 'none';
-        }
-
-        setMessage('Analysis complete.');
-        showResults();
-      } catch (err) {
-        console.error(err);
-        setMessage('Something went wrong.');
-        renderFindings([]);
-      }
-    });
-
-    function bufferToBase64(buffer) {
+    const bufferToBase64 = (buffer) => {
       let binary = '';
       const bytes = new Uint8Array(buffer);
       const chunk = 0x8000;
@@ -516,262 +272,565 @@ APP_HTML = """
         binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
       }
       return btoa(binary);
-    }
+    };
 
-    function formatLocalInput(date) {
-      const pad = value => `${value}`.padStart(2, '0');
+    const formatLocalInput = (date) => {
+      const pad = (value) => `${value}`.padStart(2, '0');
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-    }
+    };
 
-    function setDefaultTimeframe() {
+    const defaultTimeframe = () => {
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-      coralogixFrom.value = formatLocalInput(oneHourAgo);
-      coralogixTo.value = formatLocalInput(now);
-    }
+      return { from: formatLocalInput(oneHourAgo), to: formatLocalInput(now) };
+    };
 
-    function setCoralogixLoading(isLoading) {
-      coralogixButton.disabled = isLoading;
-      coralogixButton.textContent = isLoading ? 'Searching…' : 'Search Coralogix';
-      coralogixApiKey.disabled = isLoading;
-    }
+    const ThemeToggle = ({ theme, onToggle }) => (
+      <button type=\"button\" onClick={onToggle} aria-label=\"Toggle theme\">
+        {theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      </button>
+    );
 
-    function renderCoralogixResults() {
-      const limit = parseInt(coralogixLimit.value, 10) || 20;
-      const availableRecords = coralogixRecords.length;
-      const totalRecords = coralogixHits || availableRecords;
-      const totalPages = Math.max(1, Math.ceil(Math.max(availableRecords, 1) / limit));
-      if (coralogixPage > totalPages) {
-        coralogixPage = totalPages;
+    const SessionCard = ({ onLogin, sessionInfo, loading }) => {
+      const [token, setToken] = useState('');
+
+      const handleSubmit = async (evt) => {
+        evt.preventDefault();
+        await onLogin(token);
+      };
+
+      return (
+        <section className=\"panel\" aria-label=\"ChatGPT login\">
+          <h2>ChatGPT login</h2>
+          <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
+          <form onSubmit={handleSubmit} className=\"session-grid\">
+            <label htmlFor=\"sso-token\">ChatGPT SSO token</label>
+            <input
+              id=\"sso-token\"
+              type=\"text\"
+              name=\"sso-token\"
+              placeholder=\"Enter token or leave blank to use CHATGPT_SSO_TOKEN\"
+              autoComplete=\"off\"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+            />
+            <button className=\"primary-btn\" type=\"submit\" disabled={loading}>
+              {loading ? 'Connecting…' : 'Connect to ChatGPT'}
+            </button>
+            <p className={sessionInfo.connected ? '' : 'muted'}>{sessionInfo.text}</p>
+          </form>
+        </section>
+      );
+    };
+
+    const DropZone = ({ onFiles, busy, helperText, message }) => {
+      const [hover, setHover] = useState(false);
+      const fileInput = useRef(null);
+      const [lastFiles, setLastFiles] = useState([]);
+
+      const handleFiles = (files) => {
+        if (!files.length) return;
+        setLastFiles(files.map((file) => file.name));
+        onFiles(files);
+      };
+
+      const onDrop = (evt) => {
+        evt.preventDefault();
+        setHover(false);
+        const files = Array.from(evt.dataTransfer?.files || []);
+        handleFiles(files);
+      };
+
+      const onClick = (evt) => {
+        evt.preventDefault();
+        fileInput.current?.click();
+      };
+
+      const onKeyDown = (evt) => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+          evt.preventDefault();
+          fileInput.current?.click();
+        }
+      };
+
+      return (
+        <div className=\"panel\">
+          <div
+            id=\"drop-zone\"
+            role=\"button\"
+            tabIndex={0}
+            aria-label=\"Select or drop log files\"
+            className={hover ? 'hover' : ''}
+            onDragEnter={(e) => { e.preventDefault(); setHover(true); }}
+            onDragOver={(e) => { e.preventDefault(); setHover(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setHover(false); }}
+            onDrop={onDrop}
+            onClick={onClick}
+            onKeyDown={onKeyDown}
+          >
+            <p style={{ margin: 0, fontSize: '1.1rem' }}>Drag one or more log files here</p>
+            <small>Accepted: .log, .txt, .out, .err, and zip archives. Click to choose files.</small>
+            <input
+              ref={fileInput}
+              id=\"file-input\"
+              type=\"file\"
+              multiple
+              accept={ACCEPTED_TYPES}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                handleFiles(files);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          <div id=\"output-line\" style={{ marginTop: '0.75rem', fontWeight: 600 }}>
+            {busy ? 'Processing logs…' : message || 'Drop a file to get started.'}
+          </div>
+          {!!lastFiles.length && (
+            <p className=\"muted\" style={{ marginTop: '0.35rem' }}>
+              Last selected: {lastFiles.join(', ')}
+            </p>
+          )}
+          <p className=\"muted\" style={{ marginTop: '0.35rem', fontSize: '0.9rem' }}>{helperText}</p>
+        </div>
+      );
+    };
+
+    const SummarySection = ({ localSummary, fallbackText }) => {
+      if (!localSummary) {
+        return <p className=\"muted\">{fallbackText || 'Drop a file to get started.'}</p>;
       }
 
-      const startIndex = (coralogixPage - 1) * limit;
-      const slice = coralogixRecords.slice(startIndex, startIndex + limit);
+      const sections = [];
 
-      coralogixList.innerHTML = '';
-      if (!slice.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No Coralogix results yet.';
-        empty.style.color = 'var(--text-muted)';
-        coralogixList.appendChild(empty);
-      } else {
-        const fragment = document.createDocumentFragment();
-        for (const record of slice) {
-          const item = document.createElement('div');
-          item.className = 'coralogix-record';
-
-          const meta = document.createElement('div');
-          meta.className = 'record-meta';
-          const timestamp = document.createElement('span');
-          timestamp.className = 'timestamp';
-          timestamp.textContent = record.timestamp || record.time || record['@timestamp'] || 'timestamp unknown';
-          meta.append(timestamp);
-          const severityValue = record.severity || record.level || record.levelName || record.log_level;
-          if (severityValue) {
-            const severity = document.createElement('span');
-            severity.className = 'severity';
-            severity.textContent = severityValue;
-            meta.append(severity);
-          }
-          item.append(meta);
-
-          const body = document.createElement('pre');
-          const text = record.text || record.message || record.msg || record.content;
-          body.textContent = text ? text : JSON.stringify(record, null, 2);
-          item.append(body);
-          fragment.appendChild(item);
-        }
-        coralogixList.appendChild(fragment);
+      if (localSummary.overview) {
+        sections.push(
+          <p key=\"overview\" style={{ margin: '0 0 0.5rem 0' }}>
+            {localSummary.overview}
+          </p>
+        );
       }
 
-      const startDisplay = slice.length ? startIndex + 1 : 0;
-      const endDisplay = startIndex + slice.length;
-      coralogixCount.textContent = `Showing ${startDisplay}-${endDisplay} of ${totalRecords || 0} record(s)`;
-      coralogixHitCount.textContent = coralogixHits ? `${coralogixHits} total hit(s)` : '';
-      coralogixPageLabel.textContent = `Page ${coralogixPage} of ${totalPages}`;
-      coralogixPrev.disabled = coralogixPage <= 1;
-      coralogixNext.disabled = coralogixPage >= totalPages || !slice.length;
-    }
-
-    async function performCoralogixSearch(evt) {
-      evt.preventDefault();
-      if (!coralogixFrom.value || !coralogixTo.value) {
-        coralogixStatus.textContent = 'Please select a start and end time.';
-        return;
+      if (localSummary.resize_actions?.length) {
+        sections.push(
+          <div key=\"resize\" style={{ marginTop: '0.75rem' }}>
+            <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-strong)' }}>
+              Resize actions (last 5 per UUID)
+            </h3>
+            <ul style={{ margin: 0 }}>
+              {localSummary.resize_actions.map((action) => (
+                <li key={action.uuid}>
+                  <strong>{action.uuid}</strong>
+                  {action.entries?.length ? (
+                    <ul>
+                      {action.entries.map((entry, idx) => (
+                        <li key={`${action.uuid}-${idx}`}>
+                          {entry.status} (line {entry.line_no}): {entry.line}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
       }
 
-      coralogixPage = 1;
-      const limit = parseInt(coralogixLimit.value, 10) || 20;
-      coralogixStatus.textContent = 'Searching Coralogix...';
-      setCoralogixLoading(true);
+      const tailSection = (title, lines, id) => (
+        <div key={id} style={{ marginTop: '0.75rem' }}>
+          <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-strong)' }}>{title}</h3>
+          <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{(lines || []).length ? lines.join('\n') : 'No entries found.'}</pre>
+        </div>
+      );
 
-      try {
-        const payload = {
-          query: coralogixQuery.value,
-          timeframe: { from: coralogixFrom.value, to: coralogixTo.value },
-          pagination: { limit, offset: 0 },
-        };
+      sections.push(tailSection('collectorHC.log (last 5 lines)', localSummary.collector_tail || [], 'collector'));
+      sections.push(tailSection('agent.log (last 15 lines)', localSummary.agent_tail || [], 'agent'));
 
-        const apiKey = (coralogixApiKey.value || '').trim();
-        if (apiKey) {
-          payload.api_key = apiKey;
-        }
+      const errors = localSummary.errors || localSummary.unique_errors || [];
+      sections.push(
+        <div key=\"errors\" style={{ marginTop: '0.75rem' }}>
+          <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-strong)' }}>Errors</h3>
+          {errors.length ? (
+            <ul style={{ margin: 0 }}>
+              {errors.map((finding, idx) => (
+                <li key={`${finding.source}-${finding.line_no}-${idx}`}>
+                  {finding.source}:{finding.line_no} — {finding.line}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={{ margin: 0 }}>No error patterns detected across logs.</p>
+          )}
+        </div>
+      );
 
-        if (coralogixUseSummary.checked) {
-          payload.use_last_summary = true;
-        }
+      return <>{sections}</>;
+    };
 
-        const response = await fetch('/coralogix-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+    const AssistantSection = ({ text, error }) => (
+      <div>
+        <p className={!text ? 'muted' : ''}>{text || 'Waiting for input.'}</p>
+        {error ? <p className=\"error\" style={{ margin: 0 }}>{error}</p> : null}
+      </div>
+    );
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Coralogix search failed.');
-        }
-
-        const data = await response.json();
-        coralogixRecords = Array.isArray(data.records) ? data.records : [];
-        coralogixHits = Number.isFinite(Number(data.hits)) ? Number(data.hits) : coralogixRecords.length;
-        coralogixStatus.textContent = data.message || 'Search complete.';
-        renderCoralogixResults();
-      } catch (err) {
-        console.error(err);
-        coralogixStatus.textContent = err.message || 'Coralogix search failed.';
-        coralogixRecords = [];
-        coralogixHits = 0;
-        renderCoralogixResults();
-      } finally {
-        setCoralogixLoading(false);
+    const FindingsList = ({ findings }) => {
+      const hasFindings = Array.isArray(findings) && findings.length > 0;
+      if (!hasFindings) {
+        return <p className=\"muted\" id=\"findings-empty\">No findings yet.</p>;
       }
-    }
+      return (
+        <div id=\"findings-list\">
+          {findings.map((finding, idx) => (
+            <div key={`${finding.source}-${finding.line_no}-${idx}`} className=\"finding-line\">
+              <div className=\"finding-meta\">
+                <span className=\"finding-source\">{`${finding.source || 'unknown'}:${finding.line_no ?? '?'}`}</span>
+                <span className=\"finding-category\">{finding.category || 'error'}</span>
+              </div>
+              <p className=\"finding-text\">{finding.line || ''}</p>
+            </div>
+          ))}
+        </div>
+      );
+    };
 
-    coralogixForm.addEventListener('submit', performCoralogixSearch);
-    coralogixPrev.addEventListener('click', () => {
-      if (coralogixPage <= 1) return;
-      coralogixPage -= 1;
-      renderCoralogixResults();
-    });
-    coralogixNext.addEventListener('click', () => {
-      coralogixPage += 1;
-      renderCoralogixResults();
-    });
-    coralogixLimit.addEventListener('change', () => {
-      coralogixPage = 1;
-      renderCoralogixResults();
-    });
-
-    function renderHistory(history) {
-      historyList.innerHTML = '';
+    const HistoryList = ({ history }) => {
       if (!history.length) {
-        const empty = document.createElement('li');
-        empty.textContent = 'No analyses yet.';
-        empty.style.color = 'var(--text-muted)';
-        historyList.appendChild(empty);
-        return;
+        return <p className=\"muted\">No analyses yet.</p>;
       }
+      return (
+        <ul id=\"history-list\" className=\"list-reset\">
+          {history.map((entry, idx) => (
+            <li className=\"history-item\" key={`${entry.timestamp}-${idx}`}>
+              <div className=\"history-meta\">
+                <span>{entry.timestamp || ''}</span>
+                <span>{(entry.files || []).length} file(s)</span>
+              </div>
+              <div className=\"history-files\">{(entry.files || []).join(', ')}</div>
+              <p className=\"history-summary\">{entry.message || ''}</p>
+            </li>
+          ))}
+        </ul>
+      );
+    };
 
-      for (const entry of history) {
-        const item = document.createElement('li');
-        item.className = 'history-item';
+    const CoralogixPanel = ({ onSearch, state, setState }) => {
+      const { query, from, to, limit, results, hits, page, status, useSummary, apiKey, loading } = state;
 
-        const meta = document.createElement('div');
-        meta.className = 'history-meta';
-        const timestamp = document.createElement('span');
-        timestamp.textContent = entry.timestamp || '';
-        const count = document.createElement('span');
-        count.textContent = `${(entry.files || []).length} file(s)`;
-        meta.append(timestamp, count);
+      const totalPages = Math.max(1, Math.ceil(Math.max(results.length, 1) / limit));
+      const startIndex = (page - 1) * limit;
+      const slice = results.slice(startIndex, startIndex + limit);
 
-        const files = document.createElement('div');
-        files.className = 'history-files';
-        files.textContent = (entry.files || []).join(', ');
+      const updateField = (key, value) => setState((prev) => ({ ...prev, [key]: value }));
 
-        const summary = document.createElement('p');
-        summary.className = 'history-summary';
-        summary.textContent = entry.message || '';
+      return (
+        <section className=\"panel\" aria-label=\"Coralogix search\">
+          <h2>Coralogix search</h2>
+          <div className=\"coralogix-grid\">
+            <div className=\"coralogix-row\">
+              <input type=\"datetime-local\" value={from} onChange={(e) => updateField('from', e.target.value)} aria-label=\"From\" />
+              <input type=\"datetime-local\" value={to} onChange={(e) => updateField('to', e.target.value)} aria-label=\"To\" />
+              <select value={limit} onChange={(e) => updateField('limit', parseInt(e.target.value, 10) || 20)} aria-label=\"Limit\">
+                {[10, 20, 50, 100].map((value) => (
+                  <option key={value} value={value}>{value} per page</option>
+                ))}
+              </select>
+            </div>
+            <div className=\"coralogix-row\">
+              <textarea placeholder=\"Query\" value={query} onChange={(e) => updateField('query', e.target.value)} />
+            </div>
+            <div className=\"coralogix-row\">
+              <input type=\"text\" placeholder=\"Optional API key\" value={apiKey} onChange={(e) => updateField('apiKey', e.target.value)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <input type=\"checkbox\" checked={useSummary} onChange={(e) => updateField('useSummary', e.target.checked)} />
+                Use last summary in query
+              </label>
+              <button className=\"primary-btn\" type=\"button\" onClick={onSearch} disabled={loading}>
+                {loading ? 'Searching…' : 'Search Coralogix'}
+              </button>
+            </div>
+            <p className=\"muted\">{status}</p>
+          </div>
 
-        item.append(meta, files, summary);
-        historyList.appendChild(item);
-      }
-      }
+          <div style={{ marginTop: '0.5rem' }}>
+            <p className=\"muted\" style={{ marginBottom: 0 }}>
+              Showing {slice.length ? startIndex + 1 : 0}-{startIndex + slice.length} of {hits || results.length} record(s)
+            </p>
+            <p className=\"muted\" style={{ marginTop: '0.2rem' }}>
+              Page {page} of {totalPages} {hits ? `(${hits} total hit(s))` : ''}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+              <button type=\"button\" className=\"page-header button\" style={{ padding: '0.35rem 0.8rem' }} disabled={page <= 1}
+                onClick={() => setState((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}>
+                Prev
+              </button>
+              <button type=\"button\" className=\"page-header button\" style={{ padding: '0.35rem 0.8rem' }}
+                disabled={page >= totalPages || !slice.length}
+                onClick={() => setState((prev) => ({ ...prev, page: prev.page + 1 }))}>
+                Next
+              </button>
+            </div>
+          </div>
 
-      renderHistory([]);
+          <div id=\"coralogix-list\" style={{ marginTop: '0.75rem' }}>
+            {!slice.length ? (
+              <p className=\"muted\">No Coralogix results yet.</p>
+            ) : (
+              slice.map((record, idx) => (
+                <div className=\"coralogix-record\" key={`${record['@timestamp'] || record.time || idx}-${idx}`}>
+                  <div className=\"record-meta\">
+                    <span className=\"timestamp\">{record.timestamp || record.time || record['@timestamp'] || 'timestamp unknown'}</span>
+                    {record.severity || record.level || record.levelName || record.log_level ? (
+                      <span className=\"severity\">{record.severity || record.level || record.levelName || record.log_level}</span>
+                    ) : null}
+                  </div>
+                  <pre className=\"record-body\">{record.text || record.message || record.msg || record.content || JSON.stringify(record, null, 2)}</pre>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      );
+    };
 
-    async function refreshSession() {
-      try {
-        const response = await fetch('/chatgpt/session');
-        if (!response.ok) return;
-        const data = await response.json();
-        if (!data.connected) {
-          sessionStatus.textContent = 'Not connected.';
-          sessionStatus.className = '';
+    const App = () => {
+      const [theme, setTheme] = useState('light');
+      const [message, setMessage] = useState('Drop a file to get started.');
+      const [assistant, setAssistant] = useState('Waiting for input.');
+      const [assistantError, setAssistantError] = useState('');
+      const [localSummary, setLocalSummary] = useState(null);
+      const [findings, setFindings] = useState([]);
+      const [history, setHistory] = useState([]);
+      const [resultsVisible, setResultsVisible] = useState(false);
+      const [busy, setBusy] = useState(false);
+      const [sessionInfo, setSessionInfo] = useState({ connected: false, text: 'Not connected.' });
+      const [sessionLoading, setSessionLoading] = useState(false);
+      const [coralogixState, setCoralogixState] = useState({
+        query: '',
+        from: defaultTimeframe().from,
+        to: defaultTimeframe().to,
+        limit: 20,
+        results: [],
+        hits: 0,
+        page: 1,
+        status: 'Select a timeframe and run a search.',
+        useSummary: false,
+        apiKey: '',
+        loading: false,
+      });
+
+      useEffect(() => {
+        const stored = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const nextTheme = stored || (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', nextTheme);
+        setTheme(nextTheme);
+      }, []);
+
+      const toggleTheme = () => {
+        setTheme((prev) => {
+          const next = prev === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          return next;
+        });
+      };
+
+      const refreshSession = async () => {
+        try {
+          const response = await fetch('/chatgpt/session');
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data.connected) {
+            setSessionInfo({ connected: false, text: 'Not connected.' });
+            return;
+          }
+          const badge = data.account || 'ChatGPT account';
+          const details = data.resource_summary || 'Connected to ChatGPT.';
+          setSessionInfo({ connected: true, text: `${badge} — ${details}` });
+        } catch (err) {
+          console.error(err);
+          setSessionInfo({ connected: false, text: 'Could not load ChatGPT session status.' });
+        }
+      };
+
+      useEffect(() => { refreshSession(); }, []);
+
+      const handleLogin = async (token) => {
+        setSessionLoading(true);
+        try {
+          const response = await fetch('/chatgpt/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sso_token: token || undefined }),
+          });
+          const data = await response.json();
+          const text = data.message || (data.connected ? 'Connected to ChatGPT.' : 'Not connected.');
+          setSessionInfo({ connected: !!data.connected, text });
+        } catch (err) {
+          console.error(err);
+          setSessionInfo({ connected: false, text: 'Could not connect to ChatGPT.' });
+        } finally {
+          setSessionLoading(false);
+        }
+      };
+
+      const handleFiles = async (files) => {
+        if (!files.length) {
+          setMessage('No files detected.');
           return;
         }
-        const badge = document.createElement('span');
-        badge.className = 'pill';
-        badge.textContent = data.account || 'ChatGPT account';
-        sessionStatus.innerHTML = '';
-        sessionStatus.append(badge);
-        const details = document.createElement('div');
-        details.textContent = data.resource_summary || 'Connected to ChatGPT.';
-        details.style.marginTop = '0.35rem';
-        sessionStatus.append(details);
-      } catch (err) {
-        console.error(err);
-        sessionStatus.textContent = 'Could not load ChatGPT session status.';
-      }
-    }
+        setBusy(true);
+        setMessage('Processing logs...');
+        setAssistant('Waiting for ChatGPT...');
+        setAssistantError('');
+        try {
+          const payload = [];
+          for (const file of files) {
+            if (file.name.toLowerCase().endsWith('.zip')) {
+              const buffer = await file.arrayBuffer();
+              payload.push({ name: file.name, content: bufferToBase64(buffer), encoding: 'base64' });
+            } else {
+              const content = await file.text();
+              payload.push({ name: file.name, content, encoding: 'text' });
+            }
+          }
 
-    function renderFindings(findings) {
-      findingsList.innerHTML = '';
-      const hasFindings = Array.isArray(findings) && findings.length > 0;
-      findingsEmpty.style.display = hasFindings ? 'none' : 'block';
+          const response = await fetch('/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: payload }),
+          });
 
-      if (!hasFindings) {
-        return;
-      }
+          if (!response.ok) {
+            setMessage('Could not analyze logs.');
+            setFindings([]);
+            return;
+          }
 
-      const fragment = document.createDocumentFragment();
-      for (const finding of findings) {
-        const item = document.createElement('div');
-        item.className = 'finding-line';
+          const data = await response.json();
+          setLocalSummary(data.local_summary || null);
+          setAssistant(data.assistant || (data.assistant_error ? 'Unavailable.' : 'Waiting for input.'));
+          setAssistantError(data.assistant_error || '');
+          setFindings(Array.isArray(data.findings) ? data.findings : []);
+          setHistory(Array.isArray(data.history) ? data.history.slice(0, 20) : []);
+          setMessage(data.message || 'Analysis complete.');
+          setResultsVisible(true);
+        } catch (err) {
+          console.error(err);
+          setMessage('Something went wrong.');
+          setFindings([]);
+        } finally {
+          setBusy(false);
+        }
+      };
 
-        const meta = document.createElement('div');
-        meta.className = 'finding-meta';
+      const searchCoralogix = async () => {
+        if (!coralogixState.from || !coralogixState.to) {
+          setCoralogixState((prev) => ({ ...prev, status: 'Please select a start and end time.' }));
+          return;
+        }
 
-        const source = document.createElement('span');
-        source.className = 'finding-source';
-        source.textContent = `${finding.source || 'unknown'}:${finding.line_no ?? '?'}`;
+        setCoralogixState((prev) => ({ ...prev, status: 'Searching Coralogix...', loading: true, page: 1 }));
+        try {
+          const payload = {
+            query: coralogixState.query,
+            timeframe: { from: coralogixState.from, to: coralogixState.to },
+            pagination: { limit: coralogixState.limit, offset: 0 },
+          };
 
-        const category = document.createElement('span');
-        category.className = 'finding-category';
-        category.textContent = finding.category || 'error';
+          if ((coralogixState.apiKey || '').trim()) {
+            payload.api_key = coralogixState.apiKey.trim();
+          }
+          if (coralogixState.useSummary) {
+            payload.use_last_summary = true;
+          }
 
-        meta.append(source, category);
+          const response = await fetch('/coralogix-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
 
-        const text = document.createElement('p');
-        text.className = 'finding-text';
-        text.textContent = finding.line || '';
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Coralogix search failed.');
+          }
 
-        item.append(meta, text);
-        fragment.appendChild(item);
-      }
+          const data = await response.json();
+          const records = Array.isArray(data.records) ? data.records : [];
+          const hits = Number.isFinite(Number(data.hits)) ? Number(data.hits) : records.length;
+          setCoralogixState((prev) => ({
+            ...prev,
+            results: records,
+            hits,
+            status: data.message || 'Search complete.',
+            loading: false,
+            page: 1,
+          }));
+        } catch (err) {
+          console.error(err);
+          setCoralogixState((prev) => ({
+            ...prev,
+            results: [],
+            hits: 0,
+            status: err.message || 'Coralogix search failed.',
+            loading: false,
+            page: 1,
+          }));
+        }
+      };
 
-      findingsList.appendChild(fragment);
-    }
+      return (
+        <div>
+          <div className=\"page-header\">
+            <h1>Itay Logs Reviewer</h1>
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          </div>
 
-    setDefaultTimeframe();
-    renderCoralogixResults();
-    renderFindings([]);
-    renderHistory([]);
+          <div className=\"card-grid\">
+            <SessionCard onLogin={handleLogin} sessionInfo={sessionInfo} loading={sessionLoading} />
+            <DropZone onFiles={handleFiles} busy={busy} helperText=\"Nothing is uploaded anywhere—everything stays local to this app.\" message={message} />
+          </div>
+
+          <section id=\"results\" style={{ marginTop: '1.25rem', display: resultsVisible ? 'grid' : 'none', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+            <div className=\"card\">
+              <h2>Local summary</h2>
+              <SummarySection localSummary={localSummary} fallbackText={message} />
+            </div>
+            <div className=\"card\">
+              <h2>ChatGPT recommendations</h2>
+              <AssistantSection text={assistant} error={assistantError} />
+            </div>
+          </section>
+
+          <section className=\"card\" style={{ marginTop: '1rem' }}>
+            <h2>Findings</h2>
+            <FindingsList findings={findings} />
+          </section>
+
+          <section className=\"card\" style={{ marginTop: '1rem' }}>
+            <h2>History</h2>
+            <HistoryList history={history} />
+          </section>
+
+          <CoralogixPanel onSearch={searchCoralogix} state={coralogixState} setState={setCoralogixState} />
+
+          <footer>
+            Drop your logs to see a quick summary of findings. Remote queries use Coralogix via your configured credentials.
+          </footer>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
   </script>
 </body>
 </html>
 """
-
 
 HISTORY_LIMIT = 20
 _history: List[dict] = []
