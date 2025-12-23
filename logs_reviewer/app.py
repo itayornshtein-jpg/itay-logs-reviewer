@@ -10,13 +10,16 @@ import os
 import textwrap
 import webbrowser
 import zipfile
+from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Iterable, List
 
 from .analyzer import AnalysisReport, analyze_logs
+from .coralogix import CoralogixError, search_logs
 from .reader import LogSource, TEXT_SUFFIXES
+from .sso import ChatGPTSession, connect_chatgpt_via_sso
 
 
 APP_HTML = """
@@ -47,10 +50,77 @@ APP_HTML = """
       box-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
       color: #0f172a;
     }
+    p {
+      color: #1f2937;
+      line-height: 1.5;
+    }
     h1 {
       margin-top: 0;
       font-size: 1.8rem;
       letter-spacing: -0.02em;
+    }
+    #session-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #eef2ff, #fff);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.08);
+    }
+    #session-card h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.2rem;
+      color: #312e81;
+    }
+    #session-card form {
+      display: grid;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    #session-card label {
+      font-weight: 600;
+      color: #111827;
+    }
+    #session-card input[type="text"] {
+      padding: 0.6rem 0.75rem;
+      border: 1px solid #c7d2fe;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: #fff;
+      color: #111827;
+    }
+    #session-card button {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.7rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 120ms ease-in-out, transform 120ms ease-in-out;
+    }
+    #session-card button:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+    #session-card button:hover:not(:disabled) {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+    #session-status {
+      margin: 0.25rem 0 0 0;
+      color: #334155;
+      font-size: 0.95rem;
+    }
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
     }
     #drop-zone {
       border: 2px dashed #334155;
@@ -74,7 +144,42 @@ APP_HTML = """
     .error { color: #b91c1c; }
     footer {
       margin-top: 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 1rem;
+    }
+    #history h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    #history-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .history-item {
+      padding: 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
       color: #475569;
+    }
+    .history-files {
+      margin: 0.3rem 0 0.2rem 0;
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .history-summary {
+      margin: 0;
+      color: #0f172a;
       font-size: 0.95rem;
     }
   </style>
@@ -82,6 +187,16 @@ APP_HTML = """
 <body>
   <main>
     <h1>Itay Logs Reviewer</h1>
+    <section id="session-card">
+      <h2>ChatGPT login</h2>
+      <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
+      <form id="login-form">
+        <label for="sso-token">ChatGPT SSO token</label>
+        <input id="sso-token" type="text" name="sso-token" placeholder="Enter token or leave blank to use CHATGPT_SSO_TOKEN" autocomplete="off" />
+        <button type="submit" id="login-button">Connect to ChatGPT</button>
+        <p id="session-status" class="muted">Not connected.</p>
+      </form>
+    </section>
     <div id="drop-zone">
       <p style="margin: 0; font-size: 1.1rem;">Drag one or more log files here</p>
       <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
@@ -99,7 +214,8 @@ APP_HTML = """
       </div>
     </section>
     <footer>
-      Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app.
+      Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app. Remote queries
+      use Coralogix via your configured credentials.
     </footer>
   </main>
 
@@ -164,6 +280,7 @@ APP_HTML = """
         });
         if (!response.ok) {
           setMessage('Could not analyze logs.');
+          renderFindings([]);
           return;
         }
         const data = await response.json();
@@ -189,6 +306,7 @@ APP_HTML = """
       } catch (err) {
         console.error(err);
         setMessage('Something went wrong.');
+        renderFindings([]);
       }
     });
 
@@ -201,15 +319,340 @@ APP_HTML = """
       }
       return btoa(binary);
     }
+
+    function formatLocalInput(date) {
+      const pad = value => `${value}`.padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function setDefaultTimeframe() {
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      coralogixFrom.value = formatLocalInput(oneHourAgo);
+      coralogixTo.value = formatLocalInput(now);
+    }
+
+    function setCoralogixLoading(isLoading) {
+      coralogixButton.disabled = isLoading;
+      coralogixButton.textContent = isLoading ? 'Searching…' : 'Search Coralogix';
+      coralogixApiKey.disabled = isLoading;
+    }
+
+    function renderCoralogixResults() {
+      const limit = parseInt(coralogixLimit.value, 10) || 20;
+      const availableRecords = coralogixRecords.length;
+      const totalRecords = coralogixHits || availableRecords;
+      const totalPages = Math.max(1, Math.ceil(Math.max(availableRecords, 1) / limit));
+      if (coralogixPage > totalPages) {
+        coralogixPage = totalPages;
+      }
+
+      const startIndex = (coralogixPage - 1) * limit;
+      const slice = coralogixRecords.slice(startIndex, startIndex + limit);
+
+      coralogixList.innerHTML = '';
+      if (!slice.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No Coralogix results yet.';
+        empty.style.color = '#475569';
+        coralogixList.appendChild(empty);
+      } else {
+        const fragment = document.createDocumentFragment();
+        for (const record of slice) {
+          const item = document.createElement('div');
+          item.className = 'coralogix-record';
+
+          const meta = document.createElement('div');
+          meta.className = 'record-meta';
+          const timestamp = document.createElement('span');
+          timestamp.className = 'timestamp';
+          timestamp.textContent = record.timestamp || record.time || record['@timestamp'] || 'timestamp unknown';
+          meta.append(timestamp);
+          const severityValue = record.severity || record.level || record.levelName || record.log_level;
+          if (severityValue) {
+            const severity = document.createElement('span');
+            severity.className = 'severity';
+            severity.textContent = severityValue;
+            meta.append(severity);
+          }
+          item.append(meta);
+
+          const body = document.createElement('pre');
+          const text = record.text || record.message || record.msg || record.content;
+          body.textContent = text ? text : JSON.stringify(record, null, 2);
+          item.append(body);
+          fragment.appendChild(item);
+        }
+        coralogixList.appendChild(fragment);
+      }
+
+      const startDisplay = slice.length ? startIndex + 1 : 0;
+      const endDisplay = startIndex + slice.length;
+      coralogixCount.textContent = `Showing ${startDisplay}-${endDisplay} of ${totalRecords || 0} record(s)`;
+      coralogixHitCount.textContent = coralogixHits ? `${coralogixHits} total hit(s)` : '';
+      coralogixPageLabel.textContent = `Page ${coralogixPage} of ${totalPages}`;
+      coralogixPrev.disabled = coralogixPage <= 1;
+      coralogixNext.disabled = coralogixPage >= totalPages || !slice.length;
+    }
+
+    async function performCoralogixSearch(evt) {
+      evt.preventDefault();
+      if (!coralogixFrom.value || !coralogixTo.value) {
+        coralogixStatus.textContent = 'Please select a start and end time.';
+        return;
+      }
+
+      coralogixPage = 1;
+      const limit = parseInt(coralogixLimit.value, 10) || 20;
+      coralogixStatus.textContent = 'Searching Coralogix...';
+      setCoralogixLoading(true);
+
+      try {
+        const payload = {
+          query: coralogixQuery.value,
+          timeframe: { from: coralogixFrom.value, to: coralogixTo.value },
+          pagination: { limit, offset: 0 },
+        };
+
+        const apiKey = (coralogixApiKey.value || '').trim();
+        if (apiKey) {
+          payload.api_key = apiKey;
+        }
+
+        if (coralogixUseSummary.checked) {
+          payload.use_last_summary = true;
+        }
+
+        const response = await fetch('/coralogix-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Coralogix search failed.');
+        }
+
+        const data = await response.json();
+        coralogixRecords = Array.isArray(data.records) ? data.records : [];
+        coralogixHits = Number.isFinite(Number(data.hits)) ? Number(data.hits) : coralogixRecords.length;
+        coralogixStatus.textContent = data.message || 'Search complete.';
+        renderCoralogixResults();
+      } catch (err) {
+        console.error(err);
+        coralogixStatus.textContent = err.message || 'Coralogix search failed.';
+        coralogixRecords = [];
+        coralogixHits = 0;
+        renderCoralogixResults();
+      } finally {
+        setCoralogixLoading(false);
+      }
+    }
+
+    coralogixForm.addEventListener('submit', performCoralogixSearch);
+    coralogixPrev.addEventListener('click', () => {
+      if (coralogixPage <= 1) return;
+      coralogixPage -= 1;
+      renderCoralogixResults();
+    });
+    coralogixNext.addEventListener('click', () => {
+      coralogixPage += 1;
+      renderCoralogixResults();
+    });
+    coralogixLimit.addEventListener('change', () => {
+      coralogixPage = 1;
+      renderCoralogixResults();
+    });
+
+    function renderHistory(history) {
+      historyList.innerHTML = '';
+      if (!history.length) {
+        const empty = document.createElement('li');
+        empty.textContent = 'No analyses yet.';
+        empty.style.color = '#475569';
+        historyList.appendChild(empty);
+        return;
+      }
+
+      for (const entry of history) {
+        const item = document.createElement('li');
+        item.className = 'history-item';
+
+        const meta = document.createElement('div');
+        meta.className = 'history-meta';
+        const timestamp = document.createElement('span');
+        timestamp.textContent = entry.timestamp || '';
+        const count = document.createElement('span');
+        count.textContent = `${(entry.files || []).length} file(s)`;
+        meta.append(timestamp, count);
+
+        const files = document.createElement('div');
+        files.className = 'history-files';
+        files.textContent = (entry.files || []).join(', ');
+
+        const summary = document.createElement('p');
+        summary.className = 'history-summary';
+        summary.textContent = entry.message || '';
+
+        item.append(meta, files, summary);
+        historyList.appendChild(item);
+      }
+      }
+
+      renderHistory([]);
+
+    async function refreshSession() {
+      try {
+        const response = await fetch('/chatgpt/session');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.connected) {
+          sessionStatus.textContent = 'Not connected.';
+          sessionStatus.className = '';
+          return;
+        }
+        const badge = document.createElement('span');
+        badge.className = 'pill';
+        badge.textContent = data.account || 'ChatGPT account';
+        sessionStatus.innerHTML = '';
+        sessionStatus.append(badge);
+        const details = document.createElement('div');
+        details.textContent = data.resource_summary || 'Connected to ChatGPT.';
+        details.style.marginTop = '0.35rem';
+        sessionStatus.append(details);
+      } catch (err) {
+        console.error(err);
+        sessionStatus.textContent = 'Could not load ChatGPT session status.';
+      }
+    }
+
+    function renderFindings(findings) {
+      findingsList.innerHTML = '';
+      const hasFindings = Array.isArray(findings) && findings.length > 0;
+      findingsEmpty.style.display = hasFindings ? 'none' : 'block';
+
+      if (!hasFindings) {
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      for (const finding of findings) {
+        const item = document.createElement('div');
+        item.className = 'finding-line';
+
+        const meta = document.createElement('div');
+        meta.className = 'finding-meta';
+
+        const source = document.createElement('span');
+        source.className = 'finding-source';
+        source.textContent = `${finding.source || 'unknown'}:${finding.line_no ?? '?'}`;
+
+        const category = document.createElement('span');
+        category.className = 'finding-category';
+        category.textContent = finding.category || 'error';
+
+        meta.append(source, category);
+
+        const text = document.createElement('p');
+        text.className = 'finding-text';
+        text.textContent = finding.line || '';
+
+        item.append(meta, text);
+        fragment.appendChild(item);
+      }
+
+      findingsList.appendChild(fragment);
+    }
+
+    setDefaultTimeframe();
+    renderCoralogixResults();
+    renderFindings([]);
+    renderHistory([]);
   </script>
 </body>
 </html>
 """
 
 
+HISTORY_LIMIT = 20
+_history: List[dict] = []
+_chatgpt_session: ChatGPTSession | None = None
+
+
+def _sanitize_query(value: str | None, *, max_length: int = 2000) -> str:
+    if value is None:
+        return ""
+    return " ".join(str(value).split())[:max_length]
+
+
+def _sanitize_timeframe(payload: dict | None) -> dict:
+    if not isinstance(payload, dict):
+        raise ValueError("timeframe must be provided with 'from' and 'to' fields")
+
+    start = payload.get("from")
+    end = payload.get("to")
+    if not start or not end:
+        raise ValueError("timeframe must contain both 'from' and 'to'")
+
+    return {"from": str(start)[:128], "to": str(end)[:128]}
+
+
+def _sanitize_pagination(payload: dict | None) -> dict | None:
+    if payload is None:
+        return None
+
+    if not isinstance(payload, dict):
+        raise ValueError("pagination must be an object with limit/offset values")
+
+    sanitized: dict = {}
+
+    if "limit" in payload:
+        try:
+            limit = int(payload.get("limit"))
+        except (TypeError, ValueError):
+            raise ValueError("pagination limit must be a number") from None
+        if limit <= 0:
+            raise ValueError("pagination limit must be positive")
+        sanitized["limit"] = min(limit, 200)
+
+    if "offset" in payload:
+        try:
+            offset = int(payload.get("offset"))
+        except (TypeError, ValueError):
+            raise ValueError("pagination offset must be a number") from None
+        sanitized["offset"] = max(offset, 0)
+
+    if "page" in payload:
+        try:
+            page = int(payload.get("page"))
+        except (TypeError, ValueError):
+            raise ValueError("pagination page must be a number") from None
+        if page <= 0:
+            raise ValueError("pagination page must be positive")
+        sanitized["page"] = page
+
+    return sanitized or None
+
+
+def _sanitize_api_key(value: str | None, *, max_length: int = 256) -> str | None:
+    if value is None:
+        return None
+
+    cleaned = str(value).strip()
+    if not cleaned:
+        raise ValueError("api_key cannot be empty")
+
+    return cleaned[:max_length]
+
+
 def _build_sources(payload: dict) -> Iterable[LogSource]:
     files: List[dict] = payload.get("files") or []
+    if not isinstance(files, list):
+        return []
     for item in files:
+        if not isinstance(item, dict):
+            continue
         name = item.get("name", "uploaded.log")
         encoding = (item.get("encoding") or "text").lower()
         raw_content = item.get("content", "")
@@ -341,13 +784,23 @@ def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
 
 class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
+        if self.path == "/chatgpt/session":
+            payload = _session_payload()
+            encoded = json.dumps(payload).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+            return
+
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
         self.wfile.write(APP_HTML.encode("utf-8"))
 
     def do_POST(self):  # noqa: N802
-        if self.path != "/analyze":
+        if self.path not in {"/analyze", "/chatgpt/login", "/coralogix-search"}:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
@@ -399,4 +852,3 @@ def run_app(host: str = "127.0.0.1", port: int = 8000) -> None:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\nShutting down app...")
-
