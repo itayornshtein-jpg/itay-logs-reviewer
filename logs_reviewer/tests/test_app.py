@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import logs_reviewer.app as app
+from logs_reviewer.analyzer import analyze_logs
 from logs_reviewer.app import HISTORY_LIMIT, _build_sources, _connect_chatgpt, _history, _record_history, _session_payload
 from logs_reviewer.reader import LogSource
 
@@ -56,3 +57,18 @@ def test_connect_chatgpt_updates_session():
     assert response["connected"] is True
     assert "gpt-4o-mini" in response["resource_summary"]
     assert app._chatgpt_session is not None
+
+
+def test_local_summary_payload_includes_deduped_errors():
+    sources = [
+        LogSource(name="app.log", lines=["ERROR Something failed", "error something failed"]),
+        LogSource(name="worker.log", lines=["ValueError: boom"]),
+    ]
+
+    report = analyze_logs(sources)
+    payload = app._local_summary_payload(report)
+
+    assert payload["errors"] == payload["unique_errors"]
+    assert len(payload["errors"]) == 2
+    assert payload["errors"][0]["source"] == "app.log"
+    assert payload["errors"][0]["line_no"] == 1
