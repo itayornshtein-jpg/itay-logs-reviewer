@@ -33,36 +33,110 @@ APP_HTML = """
     :root {
       color-scheme: light dark;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --page-bg: radial-gradient(circle at 20% 20%, #f1f5f9, #cbd5e1);
+      --panel-bg: rgba(255, 255, 255, 0.9);
+      --panel-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
+      --text-strong: #0f172a;
+      --text-body: #1f2937;
+      --text-muted: #475569;
+      --border-color: #e2e8f0;
+      --input-border: #c7d2fe;
+      --input-bg: #fff;
+      --input-text: #111827;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --accent-disabled: #cbd5e1;
+      --pill-bg: #e0f2fe;
+      --pill-text: #075985;
+      --drop-border: #334155;
+      --drop-bg: #f8fafc;
+      --drop-text: #1e293b;
+      --drop-hover-bg: #eff6ff;
+      --drop-hover-border: #2563eb;
+      --card-bg: #f8fafc;
+      --card-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      --error: #b91c1c;
+      --footer-border: #e2e8f0;
     }
+
+    :root[data-theme="dark"] {
+      --page-bg: radial-gradient(circle at 20% 20%, #0f172a, #1e293b);
+      --panel-bg: rgba(15, 23, 42, 0.9);
+      --panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      --text-strong: #e2e8f0;
+      --text-body: #cbd5e1;
+      --text-muted: #94a3b8;
+      --border-color: #1f2937;
+      --input-border: #334155;
+      --input-bg: #0f172a;
+      --input-text: #e2e8f0;
+      --accent: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --accent-disabled: #475569;
+      --pill-bg: #312e81;
+      --pill-text: #c7d2fe;
+      --drop-border: #475569;
+      --drop-bg: #0f172a;
+      --drop-text: #e2e8f0;
+      --drop-hover-bg: #1e293b;
+      --drop-hover-border: #60a5fa;
+      --card-bg: #0f172a;
+      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      --error: #fca5a5;
+      --footer-border: #1f2937;
+    }
+
     body {
       margin: 0;
       padding: 2rem;
-      background: radial-gradient(circle at 20% 20%, #f1f5f9, #cbd5e1);
+      background: var(--page-bg);
       min-height: 100vh;
       box-sizing: border-box;
+      color: var(--text-body);
     }
     main {
       max-width: 720px;
       margin: 0 auto;
-      background: rgba(255, 255, 255, 0.9);
+      background: var(--panel-bg);
       padding: 1.5rem;
       border-radius: 16px;
-      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
-      color: #0f172a;
+      box-shadow: var(--panel-shadow);
+      color: var(--text-body);
+    }
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .page-header button {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-body);
+      border-radius: 999px;
+      padding: 0.4rem 0.9rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: border-color 120ms ease-in-out, transform 120ms ease-in-out;
+    }
+    .page-header button:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
     }
     p {
-      color: #1f2937;
+      color: var(--text-body);
       line-height: 1.5;
     }
     h1 {
       margin-top: 0;
       font-size: 1.8rem;
       letter-spacing: -0.02em;
+      color: var(--text-strong);
     }
     #session-card {
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--border-color);
       border-radius: 12px;
-      background: linear-gradient(180deg, #eef2ff, #fff);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--panel-bg), transparent 10%), var(--panel-bg));
       padding: 1rem 1.25rem;
       margin-bottom: 1.5rem;
       box-shadow: 0 8px 24px rgba(79, 70, 229, 0.08);
@@ -70,7 +144,7 @@ APP_HTML = """
     #session-card h2 {
       margin: 0 0 0.5rem 0;
       font-size: 1.2rem;
-      color: #312e81;
+      color: var(--text-strong);
     }
     #session-card form {
       display: grid;
@@ -79,19 +153,19 @@ APP_HTML = """
     }
     #session-card label {
       font-weight: 600;
-      color: #111827;
+      color: var(--text-strong);
     }
     #session-card input[type="text"] {
       padding: 0.6rem 0.75rem;
-      border: 1px solid #c7d2fe;
+      border: 1px solid var(--input-border);
       border-radius: 10px;
       font-size: 1rem;
-      background: #fff;
-      color: #111827;
+      background: var(--input-bg);
+      color: var(--input-text);
     }
     #session-card button {
-      background: #4f46e5;
-      color: #fff;
+      background: var(--accent);
+      color: var(--card-bg);
       border: none;
       border-radius: 10px;
       padding: 0.7rem 1rem;
@@ -100,57 +174,57 @@ APP_HTML = """
       transition: background 120ms ease-in-out, transform 120ms ease-in-out;
     }
     #session-card button:disabled {
-      background: #cbd5e1;
+      background: var(--accent-disabled);
       cursor: not-allowed;
     }
     #session-card button:hover:not(:disabled) {
-      background: #4338ca;
+      background: var(--accent-hover);
       transform: translateY(-1px);
     }
     #session-status {
       margin: 0.25rem 0 0 0;
-      color: #334155;
+      color: var(--text-muted);
       font-size: 0.95rem;
     }
     .pill {
       display: inline-block;
       padding: 0.25rem 0.6rem;
       border-radius: 999px;
-      background: #e0f2fe;
-      color: #075985;
+      background: var(--pill-bg);
+      color: var(--pill-text);
       font-weight: 600;
       font-size: 0.9rem;
       margin-top: 0.25rem;
     }
     #drop-zone {
-      border: 2px dashed #334155;
+      border: 2px dashed var(--drop-border);
       border-radius: 12px;
       padding: 2rem;
       text-align: center;
-      background: #f8fafc;
-      color: #1e293b;
+      background: var(--drop-bg);
+      color: var(--drop-text);
       transition: all 150ms ease-in-out;
     }
     #drop-zone.hover {
-      border-color: #2563eb;
-      background: #eff6ff;
+      border-color: var(--drop-hover-border);
+      background: var(--drop-hover-bg);
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
     }
-    #output-line { margin-top: 1rem; font-weight: 600; color: #0f172a; min-height: 1.5rem; }
+    #output-line { margin-top: 1rem; font-weight: 600; color: var(--text-strong); min-height: 1.5rem; }
     #results { margin-top: 1.25rem; display: none; }
-    .card { background: #f8fafc; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); margin-top: 0.75rem; }
-    .card h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
-    .muted { color: #475569; }
-    .error { color: #b91c1c; }
+    .card { background: var(--card-bg); border-radius: 12px; padding: 1rem; box-shadow: var(--card-shadow); margin-top: 0.75rem; color: var(--text-body); }
+    .muted { color: var(--text-muted); }
+    .error { color: var(--error); }
     footer {
       margin-top: 1.5rem;
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid var(--footer-border);
       padding-top: 1rem;
+      color: var(--text-muted);
     }
     #history h2 {
       margin: 0 0 0.5rem 0;
       font-size: 1.1rem;
-      color: #0f172a;
+      color: var(--text-strong);
     }
     #history-list {
       list-style: none;
@@ -161,32 +235,35 @@ APP_HTML = """
     }
     .history-item {
       padding: 0.75rem;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--border-color);
       border-radius: 10px;
-      background: #f8fafc;
+      background: var(--card-bg);
     }
     .history-meta {
       display: flex;
       justify-content: space-between;
       font-size: 0.9rem;
-      color: #475569;
+      color: var(--text-muted);
     }
     .history-files {
       margin: 0.3rem 0 0.2rem 0;
-      color: #0f172a;
+      color: var(--text-strong);
       font-weight: 600;
       font-size: 0.95rem;
     }
     .history-summary {
       margin: 0;
-      color: #0f172a;
+      color: var(--text-strong);
       font-size: 0.95rem;
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>Itay Logs Reviewer</h1>
+    <div class="page-header">
+      <h1>Itay Logs Reviewer</h1>
+      <button type="button" id="theme-toggle" aria-label="Toggle theme">Toggle theme</button>
+    </div>
     <section id="session-card">
       <h2>ChatGPT login</h2>
       <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
@@ -226,6 +303,33 @@ APP_HTML = """
     const summary = document.getElementById('summary');
     const assistant = document.getElementById('assistant');
     const assistantError = document.getElementById('assistant-error');
+    const themeToggle = document.getElementById('theme-toggle');
+
+    function applyTheme(theme) {
+      const root = document.documentElement;
+      const nextTheme = theme === 'dark' ? 'dark' : 'light';
+      root.setAttribute('data-theme', nextTheme);
+      localStorage.setItem('theme', nextTheme);
+      if (themeToggle) {
+        themeToggle.textContent = nextTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+        themeToggle.setAttribute('aria-pressed', nextTheme === 'dark');
+      }
+    }
+
+    function initTheme() {
+      const stored = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(stored || (prefersDark ? 'dark' : 'light'));
+    }
+
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+      });
+    }
+
+    initTheme();
 
     function setMessage(text) {
       outputLine.textContent = text;
@@ -248,7 +352,7 @@ APP_HTML = """
         heading.textContent = title;
         heading.style.margin = '0 0 0.35rem 0';
         heading.style.fontSize = '1rem';
-        heading.style.color = '#0f172a';
+        heading.style.color = 'var(--text-strong)';
         section.append(heading);
         section.append(body);
         fragment.append(section);
@@ -448,7 +552,7 @@ APP_HTML = """
       if (!slice.length) {
         const empty = document.createElement('p');
         empty.textContent = 'No Coralogix results yet.';
-        empty.style.color = '#475569';
+        empty.style.color = 'var(--text-muted)';
         coralogixList.appendChild(empty);
       } else {
         const fragment = document.createDocumentFragment();
@@ -564,7 +668,7 @@ APP_HTML = """
       if (!history.length) {
         const empty = document.createElement('li');
         empty.textContent = 'No analyses yet.';
-        empty.style.color = '#475569';
+        empty.style.color = 'var(--text-muted)';
         historyList.appendChild(empty);
         return;
       }
