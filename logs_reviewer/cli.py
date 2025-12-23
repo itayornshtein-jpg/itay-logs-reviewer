@@ -32,6 +32,24 @@ def format_report(report, chatgpt_session: ChatGPTSession | None = None) -> str:
             lines.append(
                 f"[{finding.category}] {finding.source}:{finding.line_no} -> {finding.line}\n  Suggestion: {finding.suggestion}"
             )
+    if report.resize_actions:
+        lines.append("\nResize actions (last 5 per UUID):")
+        for uuid, entries in sorted(report.resize_actions.items()):
+            lines.append(f" - {uuid}:")
+            for entry in entries:
+                lines.append(f"   * line {entry.line_no} [{entry.status}] {entry.line}")
+    if report.collector_tail:
+        lines.append("\ncollectorHC.log (last 5 lines):")
+        for line in report.collector_tail:
+            lines.append(f"   {line}")
+    if report.agent_tail:
+        lines.append("\nagent.log (last 15 lines):")
+        for line in report.agent_tail:
+            lines.append(f"   {line}")
+    if report.unique_errors:
+        lines.append("\nUnique error lines:")
+        for finding in report.unique_errors:
+            lines.append(f" - {finding.source}:{finding.line_no} -> {finding.line}")
     if chatgpt_session:
         lines.append("\nChatGPT SSO")
         lines.append(f"Connected account : {chatgpt_session.account}")
