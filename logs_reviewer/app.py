@@ -231,6 +231,7 @@ APP_HTML = """
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
     #coralogix input[type="text"],
+    #coralogix input[type="password"],
     #coralogix input[type="datetime-local"],
     #coralogix select {
       padding: 0.6rem 0.75rem;
@@ -413,8 +414,10 @@ APP_HTML = """
     </section>
     <section id="coralogix">
       <h2>Search Coralogix</h2>
-      <p class="description">Query your centralized logs remotely using your configured Coralogix credentials.</p>
+      <p class="description">Query your centralized logs remotely using your configured Coralogix credentials or a key you provide below (kept only in this session).</p>
       <form id="coralogix-form">
+        <label for="coralogix-api-key">Coralogix API key</label>
+        <input id="coralogix-api-key" type="password" name="api-key" placeholder="Paste your Coralogix API key" autocomplete="off" />
         <label for="coralogix-query">Search query</label>
         <input id="coralogix-query" type="text" name="query" placeholder="service:error OR exception" autocomplete="off" />
         <div class="field-row">
@@ -478,6 +481,7 @@ APP_HTML = """
     const ssoToken = document.getElementById('sso-token');
     const sessionStatus = document.getElementById('session-status');
     const coralogixForm = document.getElementById('coralogix-form');
+    const coralogixApiKey = document.getElementById('coralogix-api-key');
     const coralogixQuery = document.getElementById('coralogix-query');
     const coralogixFrom = document.getElementById('coralogix-from');
     const coralogixTo = document.getElementById('coralogix-to');
@@ -585,6 +589,7 @@ APP_HTML = """
     function setCoralogixLoading(isLoading) {
       coralogixButton.disabled = isLoading;
       coralogixButton.textContent = isLoading ? 'Searching…' : 'Search Coralogix';
+      coralogixApiKey.disabled = isLoading;
     }
 
     function renderCoralogixResults() {
@@ -662,6 +667,11 @@ APP_HTML = """
           timeframe: { from: coralogixFrom.value, to: coralogixTo.value },
           pagination: { limit, offset: 0 },
         };
+
+        const apiKey = (coralogixApiKey.value || '').trim();
+        if (apiKey) {
+          payload.api_key = apiKey;
+        }
 
         if (coralogixUseSummary.checked) {
           payload.use_last_summary = true;
@@ -879,6 +889,17 @@ def _sanitize_pagination(payload: dict | None) -> dict | None:
     return sanitized or None
 
 
+def _sanitize_api_key(value: str | None, *, max_length: int = 256) -> str | None:
+    if value is None:
+        return None
+
+    cleaned = str(value).strip()
+    if not cleaned:
+        raise ValueError("api_key cannot be empty")
+
+    return cleaned[:max_length]
+
+
 def _build_sources(payload: dict) -> Iterable[LogSource]:
     files: List[dict] = payload.get("files") or []
     if not isinstance(files, list):
@@ -997,6 +1018,7 @@ def _perform_coralogix_search(payload: dict | None) -> dict:
     timeframe = _sanitize_timeframe(payload.get("timeframe"))
     query = _sanitize_query(payload.get("query"))
     pagination = _sanitize_pagination(payload.get("pagination"))
+    api_key = _sanitize_api_key(payload.get("api_key"))
 
     if not query and payload.get("use_last_summary") and _history:
         query = _sanitize_query(_history[0].get("message"))
@@ -1008,7 +1030,13 @@ def _perform_coralogix_search(payload: dict | None) -> dict:
     if filters is not None and not isinstance(filters, dict):
         raise ValueError("filters must be an object if provided")
 
-    return search_logs(query=query, timeframe=timeframe, filters=filters, pagination=pagination)
+    return search_logs(
+        query=query,
+        timeframe=timeframe,
+        filters=filters,
+        pagination=pagination,
+        api_key=api_key,
+    )
 
 
 class AppHandler(BaseHTTPRequestHandler):
