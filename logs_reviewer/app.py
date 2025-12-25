@@ -24,15 +24,15 @@ from .sso import ChatGPTSession, connect_chatgpt_via_sso
 
 APP_HTML = """
 <!doctype html>
-<html lang="en">
+<html lang=\"en\">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset=\"UTF-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
   <title>Itay Logs Reviewer</title>
   <style>
     :root {
-      color-scheme: light dark;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;
       --page-bg: radial-gradient(circle at 20% 20%, #f1f5f9, #cbd5e1);
       --panel-bg: rgba(255, 255, 255, 0.9);
       --panel-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
@@ -59,7 +59,8 @@ APP_HTML = """
       --footer-border: #e2e8f0;
     }
 
-    :root[data-theme="dark"] {
+    :root[data-theme=\"dark\"] {
+      color-scheme: dark;
       --page-bg: radial-gradient(circle at 20% 20%, #0f172a, #1e293b);
       --panel-bg: rgba(15, 23, 42, 0.9);
       --panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
@@ -94,8 +95,9 @@ APP_HTML = """
       box-sizing: border-box;
       color: var(--text-body);
     }
+
     main {
-      max-width: 720px;
+      max-width: 960px;
       margin: 0 auto;
       background: var(--panel-bg);
       padding: 1.5rem;
@@ -103,89 +105,89 @@ APP_HTML = """
       box-shadow: var(--panel-shadow);
       color: var(--text-body);
     }
+
     .page-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
+      flex-wrap: wrap;
     }
+
     .page-header button {
       background: none;
       border: 1px solid var(--border-color);
       color: var(--text-body);
       border-radius: 999px;
-      padding: 0.4rem 0.9rem;
+      padding: 0.5rem 1rem;
       cursor: pointer;
       font-weight: 600;
       transition: border-color 120ms ease-in-out, transform 120ms ease-in-out;
     }
+
     .page-header button:hover {
       border-color: var(--accent);
       transform: translateY(-1px);
     }
+
+    h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      letter-spacing: -0.02em;
+      color: var(--text-strong);
+    }
+
     p {
       color: var(--text-body);
       line-height: 1.5;
     }
-    h1 {
-      margin-top: 0;
-      font-size: 1.8rem;
-      letter-spacing: -0.02em;
-      color: var(--text-strong);
-    }
-    #session-card {
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      background: linear-gradient(180deg, color-mix(in srgb, var(--panel-bg), transparent 10%), var(--panel-bg));
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.08);
-    }
-    #session-card h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.2rem;
-      color: var(--text-strong);
-    }
-    #session-card form {
+
+    .card-grid {
       display: grid;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 1rem;
     }
-    #session-card label {
-      font-weight: 600;
+
+    #results { display: none; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    #results.visible { display: grid; }
+
+    .card,
+    .panel {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+      color: var(--text-body);
+    }
+
+    .panel h2,
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.35rem;
       color: var(--text-strong);
     }
-    #session-card input[type="text"] {
-      padding: 0.6rem 0.75rem;
-      border: 1px solid var(--input-border);
-      border-radius: 10px;
-      font-size: 1rem;
-      background: var(--input-bg);
-      color: var(--input-text);
-    }
-    #session-card button {
-      background: var(--accent);
-      color: var(--card-bg);
-      border: none;
-      border-radius: 10px;
-      padding: 0.7rem 1rem;
-      font-size: 1rem;
+
+    #drop-zone {
+      border: 2px dashed var(--drop-border);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      background: var(--drop-bg);
+      color: var(--drop-text);
+      transition: all 150ms ease-in-out;
       cursor: pointer;
-      transition: background 120ms ease-in-out, transform 120ms ease-in-out;
     }
-    #session-card button:disabled {
-      background: var(--accent-disabled);
-      cursor: not-allowed;
+
+    #drop-zone.hover {
+      border-color: var(--drop-hover-border);
+      background: var(--drop-hover-bg);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
     }
-    #session-card button:hover:not(:disabled) {
-      background: var(--accent-hover);
-      transform: translateY(-1px);
-    }
-    #session-status {
-      margin: 0.25rem 0 0 0;
-      color: var(--text-muted);
-      font-size: 0.95rem;
-    }
+
+    .muted { color: var(--text-muted); }
+    .error { color: var(--error); }
+
     .pill {
       display: inline-block;
       padding: 0.25rem 0.6rem;
@@ -196,582 +198,613 @@ APP_HTML = """
       font-size: 0.9rem;
       margin-top: 0.25rem;
     }
-    #drop-zone {
-      border: 2px dashed var(--drop-border);
-      border-radius: 12px;
-      padding: 2rem;
-      text-align: center;
-      background: var(--drop-bg);
-      color: var(--drop-text);
-      transition: all 150ms ease-in-out;
-    }
-    #drop-zone.hover {
-      border-color: var(--drop-hover-border);
-      background: var(--drop-hover-bg);
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
-    }
-    #output-line { margin-top: 1rem; font-weight: 600; color: var(--text-strong); min-height: 1.5rem; }
-    #results { margin-top: 1.25rem; display: none; }
-    .card { background: var(--card-bg); border-radius: 12px; padding: 1rem; box-shadow: var(--card-shadow); margin-top: 0.75rem; color: var(--text-body); }
-    .muted { color: var(--text-muted); }
-    .error { color: var(--error); }
-    footer {
-      margin-top: 1.5rem;
-      border-top: 1px solid var(--footer-border);
-      padding-top: 1rem;
-      color: var(--text-muted);
-    }
-    #history h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.1rem;
-      color: var(--text-strong);
-    }
-    #history-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+
+    .session-grid {
       display: grid;
-      gap: 0.5rem;
+      gap: 0.75rem;
     }
-    .history-item {
-      padding: 0.75rem;
-      border: 1px solid var(--border-color);
+
+    .session-grid label { font-weight: 600; color: var(--text-strong); }
+
+    .session-grid input[type=\"text\"] {
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--input-border);
       border-radius: 10px;
-      background: var(--card-bg);
+      font-size: 1rem;
+      background: var(--input-bg);
+      color: var(--input-text);
     }
-    .history-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.9rem;
-      color: var(--text-muted);
+
+    .primary-btn {
+      background: var(--accent);
+      color: var(--card-bg);
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 120ms ease-in-out, transform 120ms ease-in-out;
     }
-    .history-files {
-      margin: 0.3rem 0 0.2rem 0;
-      color: var(--text-strong);
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-    .history-summary {
-      margin: 0;
-      color: var(--text-strong);
-      font-size: 0.95rem;
-    }
+
+    .primary-btn:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
+    .primary-btn:disabled { background: var(--accent-disabled); cursor: not-allowed; }
+
+    .list-reset { list-style: none; padding: 0; margin: 0; }
+
+    .history-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg); }
+    .history-meta { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted); }
+    .history-files { margin: 0.3rem 0 0.2rem 0; color: var(--text-strong); font-weight: 600; font-size: 0.95rem; }
+
+    .finding-line { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.7rem; margin-bottom: 0.5rem; background: var(--panel-bg); box-shadow: var(--card-shadow); }
+    .finding-meta { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted); }
+    .finding-source { font-weight: 700; color: var(--text-strong); }
+    .finding-category { background: var(--pill-bg); color: var(--pill-text); border-radius: 999px; padding: 0.15rem 0.55rem; }
+    .finding-text { margin: 0.35rem 0 0 0; color: var(--text-strong); }
+
+    .coralogix-grid { display: grid; gap: 0.75rem; }
+    .coralogix-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem; }
+    .coralogix-row input, .coralogix-row select, .coralogix-row textarea { width: 100%; padding: 0.5rem 0.6rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-text); box-sizing: border-box; }
+    .coralogix-row textarea { min-height: 120px; resize: vertical; }
+
+    .coralogix-record { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem; background: var(--card-bg); box-shadow: var(--card-shadow); }
+    .record-meta { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted); gap: 0.75rem; }
+    .record-meta .timestamp { font-weight: 700; color: var(--text-strong); }
+    .record-meta .severity { background: var(--pill-bg); color: var(--pill-text); border-radius: 999px; padding: 0.2rem 0.5rem; }
+    .record-body { white-space: pre-wrap; margin: 0.4rem 0 0 0; }
+
+    footer { margin-top: 1.5rem; border-top: 1px solid var(--footer-border); padding-top: 1rem; color: var(--text-muted); }
   </style>
 </head>
+
 <body>
   <main>
-    <div class="page-header">
-      <h1>Itay Logs Reviewer</h1>
-      <button type="button" id="theme-toggle" aria-label="Toggle theme">Toggle theme</button>
-    </div>
-    <section id="session-card">
-      <h2>ChatGPT login</h2>
-      <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
-      <form id="login-form">
-        <label for="sso-token">ChatGPT SSO token</label>
-        <input id="sso-token" type="text" name="sso-token" placeholder="Enter token or leave blank to use CHATGPT_SSO_TOKEN" autocomplete="off" />
-        <button type="submit" id="login-button">Connect to ChatGPT</button>
-        <p id="session-status" class="muted">Not connected.</p>
-      </form>
-    </section>
-    <div id="drop-zone">
-      <p style="margin: 0; font-size: 1.1rem;">Drag one or more log files here</p>
-      <small>Accepted: .log, .txt, .out, .err, and zip archives</small>
-    </div>
-    <div id="output-line"></div>
-    <section id="results">
-      <div class="card">
-        <h2>Local summary</h2>
-        <div id="summary" class="muted">Drop a file to get started.</div>
-      </div>
-      <div class="card">
-        <h2>ChatGPT recommendations</h2>
-        <p id="assistant" class="muted">Waiting for input.</p>
-        <p id="assistant-error" class="error" style="display: none;"></p>
-      </div>
-    </section>
-    <footer>
-      Drop your logs to see a quick summary of findings. Nothing is uploaded anywhere—everything stays local to this app. Remote queries
-      use Coralogix via your configured credentials.
-    </footer>
+    <div id="root"></div>
   </main>
 
   <script>
-    const dropZone = document.getElementById('drop-zone');
-    const outputLine = document.getElementById('output-line');
-    const results = document.getElementById('results');
-    const summary = document.getElementById('summary');
-    const assistant = document.getElementById('assistant');
-    const assistantError = document.getElementById('assistant-error');
-    const themeToggle = document.getElementById('theme-toggle');
+    (() => {
+      const root = document.getElementById('root');
+      const ACCEPTED_TYPES = '.log,.txt,.out,.err,.zip';
 
-    function applyTheme(theme) {
-      const root = document.documentElement;
-      const nextTheme = theme === 'dark' ? 'dark' : 'light';
-      root.setAttribute('data-theme', nextTheme);
-      localStorage.setItem('theme', nextTheme);
-      if (themeToggle) {
-        themeToggle.textContent = nextTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
-        themeToggle.setAttribute('aria-pressed', nextTheme === 'dark');
-      }
-    }
+      root.innerHTML = `
+        <div class="page-header">
+          <h1>Itay Logs Reviewer</h1>
+          <button type="button" id="theme-toggle" aria-label="Toggle theme">Switch to dark theme</button>
+        </div>
 
-    function initTheme() {
-      const stored = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      applyTheme(stored || (prefersDark ? 'dark' : 'light'));
-    }
+        <div class="card-grid">
+          <section class="panel" aria-label="ChatGPT login">
+            <h2>ChatGPT login</h2>
+            <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
+            <form id="session-form" class="session-grid">
+              <label for="sso-token">ChatGPT SSO token</label>
+              <input
+                id="sso-token"
+                type="text"
+                name="sso-token"
+                placeholder="Enter token or leave blank to use CHATGPT_SSO_TOKEN"
+                autocomplete="off"
+              />
+              <button class="primary-btn" type="submit" id="session-submit">Connect to ChatGPT</button>
+              <p id="session-status" class="muted">Not connected.</p>
+            </form>
+          </section>
 
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-        applyTheme(current === 'dark' ? 'light' : 'dark');
-      });
-    }
+          <section class="card" aria-label="Upload logs">
+            <div id="drop-zone" role="button" tabindex="0" aria-busy="false" aria-label="Drop logs or click to select">
+              <input id="file-input" type="file" multiple accept="${ACCEPTED_TYPES}" style="display: none" />
+              <p style="margin: 0; font-weight: 700">Drop your log files or click to select</p>
+              <p class="muted" style="margin-bottom: 0.5rem">Nothing is uploaded anywhere—everything stays local to this app.</p>
+              <p class="pill" id="drop-status">Idle</p>
+              <p id="drop-message" style="margin: 0.35rem 0 0">Drop a file to get started.</p>
+              <p class="muted" id="last-files" style="margin: 0.35rem 0 0"></p>
+            </div>
+          </section>
+        </div>
 
-    initTheme();
+        <section id="results" class="results-grid">
+          <div class="card">
+            <h2>Local summary</h2>
+            <div id="local-summary" class="muted">Waiting for input.</div>
+          </div>
+          <div class="card">
+            <h2>ChatGPT recommendations</h2>
+            <div id="assistant-text" class="muted">No recommendations yet.</div>
+          </div>
+        </section>
 
-    function setMessage(text) {
-      outputLine.textContent = text;
-    }
+        <section class="card" style="margin-top: 1rem">
+          <h2>Findings</h2>
+          <div id="findings-list" class="muted">No findings yet.</div>
+        </section>
 
-    function renderLocalSummary(localSummary, fallbackText) {
-      summary.innerHTML = '';
+        <section class="card" style="margin-top: 1rem">
+          <h2>History</h2>
+          <ul id="history-list" class="list-reset muted"><li>No analyses yet.</li></ul>
+        </section>
 
-      if (!localSummary) {
-        summary.textContent = fallbackText || 'Analysis complete.';
-        summary.classList.remove('muted');
-        return;
-      }
+        <section class="panel" aria-label="Coralogix search">
+          <h2>Coralogix search</h2>
+          <div class="coralogix-grid">
+            <div class="coralogix-row">
+              <input type="datetime-local" id="cg-from" aria-label="From" />
+              <input type="datetime-local" id="cg-to" aria-label="To" />
+              <select id="cg-limit" aria-label="Limit">
+                <option value="10">10 per page</option>
+                <option value="20" selected>20 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+              </select>
+            </div>
+            <div class="coralogix-row">
+              <textarea id="cg-query" placeholder="Query"></textarea>
+            </div>
+            <div class="coralogix-row">
+              <input type="text" id="cg-api" placeholder="Optional API key" />
+              <label style="display: flex; align-items: center; gap: 0.4rem">
+                <input type="checkbox" id="cg-summary" />
+                Use last summary in query
+              </label>
+              <button class="primary-btn" type="button" id="cg-search">Search Coralogix</button>
+            </div>
+            <p class="muted" id="cg-status">Select a timeframe and run a search.</p>
+          </div>
 
-      const fragment = document.createDocumentFragment();
-      const addSection = (title, body) => {
-        const section = document.createElement('div');
-        section.style.marginTop = '0.75rem';
-        const heading = document.createElement('h3');
-        heading.textContent = title;
-        heading.style.margin = '0 0 0.35rem 0';
-        heading.style.fontSize = '1rem';
-        heading.style.color = 'var(--text-strong)';
-        section.append(heading);
-        section.append(body);
-        fragment.append(section);
+          <div style="margin-top: 0.5rem">
+            <p class="muted" id="cg-range" style="margin-bottom: 0">Showing 0-0 of 0 record(s)</p>
+            <p class="muted" id="cg-page" style="margin-top: 0.2rem">Page 1 of 1</p>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem">
+              <button type="button" class="page-header button" style="padding: 0.35rem 0.8rem" id="cg-prev" disabled>Prev</button>
+              <button type="button" class="page-header button" style="padding: 0.35rem 0.8rem" id="cg-next" disabled>Next</button>
+            </div>
+          </div>
+
+          <div id="coralogix-list" style="margin-top: 0.75rem">
+            <p class="muted">No Coralogix results yet.</p>
+          </div>
+        </section>
+
+        <footer>
+          Drop your logs to see a quick summary of findings. Remote queries use Coralogix via your configured credentials.
+        </footer>
+      `;
+
+      const bufferToBase64 = (buffer) => {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
       };
 
-      if (localSummary.overview) {
-        const overview = document.createElement('p');
-        overview.textContent = localSummary.overview;
-        overview.style.margin = '0 0 0.5rem 0';
-        fragment.append(overview);
-      }
+      const formatLocalInput = (date) => {
+        const pad = (value) => `${value}`.padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      };
 
-      if (localSummary.resize_actions && localSummary.resize_actions.length) {
-        const list = document.createElement('ul');
-        list.style.margin = '0';
-        for (const action of localSummary.resize_actions) {
-          const item = document.createElement('li');
-          const title = document.createElement('strong');
-          title.textContent = action.uuid;
-          item.append(title);
-          if (action.entries && action.entries.length) {
-            const inner = document.createElement('ul');
-            for (const entry of action.entries) {
-              const entryItem = document.createElement('li');
-              entryItem.textContent = `${entry.status} (line ${entry.line_no}): ${entry.line}`;
-              inner.append(entryItem);
-            }
-            item.append(inner);
-          }
-          list.append(item);
-        }
-        addSection('Resize actions (last 5 per UUID)', list);
-      }
+      const defaultTimeframe = () => {
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        return { from: formatLocalInput(oneHourAgo), to: formatLocalInput(now) };
+      };
 
-      const collectorLines = localSummary.collector_tail || [];
-      const collectorBody = document.createElement('pre');
-      collectorBody.textContent = collectorLines.length ? collectorLines.join('\n') : 'No collectorHC.log entries found.';
-      collectorBody.style.whiteSpace = 'pre-wrap';
-      collectorBody.style.margin = '0';
-      addSection('collectorHC.log (last 5 lines)', collectorBody);
+      const dom = {
+        themeToggle: document.getElementById('theme-toggle'),
+        dropZone: document.getElementById('drop-zone'),
+        fileInput: document.getElementById('file-input'),
+        dropStatus: document.getElementById('drop-status'),
+        dropMessage: document.getElementById('drop-message'),
+        lastFiles: document.getElementById('last-files'),
+        results: document.getElementById('results'),
+        localSummary: document.getElementById('local-summary'),
+        assistant: document.getElementById('assistant-text'),
+        findings: document.getElementById('findings-list'),
+        history: document.getElementById('history-list'),
+        sessionForm: document.getElementById('session-form'),
+        sessionToken: document.getElementById('sso-token'),
+        sessionStatus: document.getElementById('session-status'),
+        sessionSubmit: document.getElementById('session-submit'),
+        cgFrom: document.getElementById('cg-from'),
+        cgTo: document.getElementById('cg-to'),
+        cgLimit: document.getElementById('cg-limit'),
+        cgQuery: document.getElementById('cg-query'),
+        cgApi: document.getElementById('cg-api'),
+        cgSummary: document.getElementById('cg-summary'),
+        cgSearch: document.getElementById('cg-search'),
+        cgStatus: document.getElementById('cg-status'),
+        cgRange: document.getElementById('cg-range'),
+        cgPage: document.getElementById('cg-page'),
+        cgPrev: document.getElementById('cg-prev'),
+        cgNext: document.getElementById('cg-next'),
+        cgList: document.getElementById('coralogix-list'),
+      };
 
-      const agentLines = localSummary.agent_tail || [];
-      const agentBody = document.createElement('pre');
-      agentBody.textContent = agentLines.length ? agentLines.join('\n') : 'No agent.log entries found.';
-      agentBody.style.whiteSpace = 'pre-wrap';
-      agentBody.style.margin = '0';
-      addSection('agent.log (last 15 lines)', agentBody);
+      const state = {
+        theme: 'light',
+        busy: false,
+        message: 'Drop a file to get started.',
+        assistant: '',
+        assistantError: '',
+        localSummary: null,
+        findings: [],
+        history: [],
+        session: { connected: false, text: 'Not connected.' },
+        coralogix: {
+          query: '',
+          from: defaultTimeframe().from,
+          to: defaultTimeframe().to,
+          limit: 20,
+          results: [],
+          hits: 0,
+          page: 1,
+          status: 'Select a timeframe and run a search.',
+          useSummary: false,
+          apiKey: '',
+          loading: false,
+        },
+      };
 
-      const uniqueErrors = localSummary.errors || localSummary.unique_errors || [];
-      const errorList = document.createElement('ul');
-      errorList.style.margin = '0';
-      if (uniqueErrors.length) {
-        for (const finding of uniqueErrors) {
-          const li = document.createElement('li');
-          li.textContent = `${finding.source}:${finding.line_no} — ${finding.line}`;
-          errorList.append(li);
-        }
-      } else {
-        const empty = document.createElement('p');
-        empty.textContent = 'No error patterns detected across logs.';
-        empty.style.margin = '0';
-        addSection('Errors', empty);
-      }
-      if (uniqueErrors.length) {
-        addSection('Errors', errorList);
-      }
+      const applyTheme = (theme) => {
+        document.documentElement.setAttribute('data-theme', theme);
+        state.theme = theme;
+        localStorage.setItem('theme', theme);
+        dom.themeToggle.textContent = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+      };
 
-      if (!fragment.children.length) {
-        summary.textContent = fallbackText || 'Analysis complete.';
-        summary.classList.remove('muted');
-        return;
-      }
+      const initTheme = () => {
+        const stored = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(stored || (prefersDark ? 'dark' : 'light'));
+      };
 
-      summary.append(fragment);
-      summary.classList.remove('muted');
-    }
+      const setBusy = (busy) => {
+        state.busy = busy;
+        dom.dropStatus.textContent = busy ? 'Analyzing…' : 'Idle';
+        dom.dropZone.setAttribute('aria-busy', String(busy));
+      };
 
-    function showResults() {
-      results.style.display = 'block';
-    }
+      const setMessage = (text, isError = false) => {
+        state.message = text || '';
+        dom.dropMessage.textContent = state.message || 'Drop a file to get started.';
+        dom.dropMessage.classList.toggle('error', isError);
+      };
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropZone.addEventListener(eventName, evt => {
-        evt.preventDefault();
-        evt.stopPropagation();
-        dropZone.classList.add('hover');
-      });
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, evt => {
-        evt.preventDefault();
-        evt.stopPropagation();
-        dropZone.classList.remove('hover');
-      });
-    });
-
-    dropZone.addEventListener('drop', async evt => {
-      const files = Array.from(evt.dataTransfer.files || []);
-      if (!files.length) {
-        setMessage('No files detected.');
-        return;
-      }
-      setMessage('Processing logs...');
-      assistant.textContent = 'Waiting for ChatGPT...';
-      assistant.classList.add('muted');
-      assistantError.style.display = 'none';
-      try {
-        const payload = [];
-        for (const file of files) {
-          if (file.name.toLowerCase().endsWith('.zip')) {
-            const buffer = await file.arrayBuffer();
-            const binary = bufferToBase64(buffer);
-            payload.push({ name: file.name, content: binary, encoding: 'base64' });
-          } else {
-            const content = await file.text();
-            payload.push({ name: file.name, content, encoding: 'text' });
-          }
-        }
-        const response = await fetch('/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files: payload }),
-        });
-        if (!response.ok) {
-          setMessage('Could not analyze logs.');
-          renderFindings([]);
+      const renderFindings = () => {
+        if (!state.findings.length) {
+          dom.findings.className = 'muted';
+          dom.findings.textContent = 'No findings yet.';
           return;
         }
-        const data = await response.json();
-        renderLocalSummary(data.local_summary, data.message);
-        if (data.assistant) {
-          assistant.textContent = data.assistant;
-          assistant.classList.remove('muted');
-        } else {
-          assistant.textContent = data.assistant_error ? 'Unavailable.' : 'Waiting for input.';
-          assistant.classList.add('muted');
+        dom.findings.className = '';
+        dom.findings.innerHTML = state.findings
+          .map(
+            (finding) => `
+              <div class="finding-line">
+                <div class="finding-meta">
+                  <span class="finding-source">${finding.source || 'unknown'}:${finding.line_no ?? '?'}</span>
+                  <span class="finding-category">${finding.category || 'error'}</span>
+                </div>
+                <p class="finding-text">${finding.line || ''}</p>
+              </div>
+            `,
+          )
+          .join('');
+      };
+
+      const renderHistory = () => {
+        if (!state.history.length) {
+          dom.history.className = 'list-reset muted';
+          dom.history.innerHTML = '<li>No analyses yet.</li>';
+          return;
+        }
+        dom.history.className = 'list-reset';
+        dom.history.innerHTML = state.history
+          .map(
+            (entry) => `
+              <li class="history-item">
+                <div class="history-meta">
+                  <span>${entry.timestamp || ''}</span>
+                  <span>${(entry.files || []).length} file(s)</span>
+                </div>
+                <div class="history-files">${(entry.files || []).join(', ')}</div>
+                <p class="history-summary">${entry.message || ''}</p>
+              </li>
+            `,
+          )
+          .join('');
+      };
+
+      const renderSummary = () => {
+        if (!state.localSummary) {
+          dom.localSummary.className = 'muted';
+          dom.localSummary.textContent = state.message || 'Waiting for input.';
+          return;
         }
 
-        if (data.assistant_error) {
-          assistantError.textContent = data.assistant_error;
-          assistantError.style.display = 'block';
-        } else {
-          assistantError.style.display = 'none';
+        const categories = Object.entries(state.localSummary.by_category || {});
+        const repeats = state.localSummary.top_repeats || [];
+        dom.localSummary.className = '';
+        dom.localSummary.innerHTML = `
+          <p><strong>${state.localSummary.scanned_sources}</strong> source(s) scanned. <strong>${state.localSummary.total_findings}</strong> finding(s) detected.</p>
+          <div class="summary-grid">
+            <div>
+              <h3 style="margin-bottom: 0.3rem">By category</h3>
+              ${
+                categories.length
+                  ? `<ul class="list-reset">${categories
+                      .map(([category, count]) => `<li style="padding: 0.1rem 0"><strong>${count}</strong> ${category}</li>`)
+                      .join('')}</ul>`
+                  : '<p class="muted">No findings yet.</p>'
+              }
+            </div>
+            <div>
+              <h3 style="margin-bottom: 0.3rem">Top repeats</h3>
+              ${
+                repeats.length
+                  ? `<ul class="list-reset">${repeats
+                      .map((repeat) => `<li style="padding: 0.1rem 0"><strong>${repeat.count}×</strong> ${repeat.message}</li>`)
+                      .join('')}</ul>`
+                  : '<p class="muted">No repeats detected.</p>'
+              }
+            </div>
+          </div>
+        `;
+      };
+
+      const renderAssistant = () => {
+        if (state.assistantError) {
+          dom.assistant.className = 'error';
+          dom.assistant.textContent = state.assistantError;
+          return;
+        }
+        dom.assistant.className = state.assistant ? '' : 'muted';
+        dom.assistant.textContent = state.assistant || 'No recommendations yet.';
+      };
+
+      const renderResults = () => {
+        const shouldShow = Boolean(state.localSummary || state.assistant || state.message);
+        dom.results.classList.toggle('visible', shouldShow);
+        renderSummary();
+        renderAssistant();
+        renderFindings();
+        renderHistory();
+      };
+
+      const renderCoralogix = () => {
+        const { results, hits, page, limit } = state.coralogix;
+        const totalPages = Math.max(1, Math.ceil(Math.max(results.length, 1) / limit));
+        const startIndex = (page - 1) * limit;
+        const slice = results.slice(startIndex, startIndex + limit);
+
+        dom.cgRange.textContent = `Showing ${slice.length ? startIndex + 1 : 0}-${startIndex + slice.length} of ${hits || results.length} record(s)`;
+        dom.cgPage.textContent = `Page ${page} of ${totalPages}${hits ? ` (${hits} total hit(s))` : ''}`;
+        dom.cgPrev.disabled = page <= 1;
+        dom.cgNext.disabled = page >= totalPages || !slice.length;
+        dom.cgStatus.textContent = state.coralogix.status || '';
+        dom.cgSearch.textContent = state.coralogix.loading ? 'Searching…' : 'Search Coralogix';
+        dom.cgSearch.disabled = state.coralogix.loading;
+
+        if (!slice.length) {
+          dom.cgList.innerHTML = '<p class="muted">No Coralogix results yet.</p>';
+          return;
         }
 
-        setMessage('Analysis complete.');
-        showResults();
-      } catch (err) {
-        console.error(err);
-        setMessage('Something went wrong.');
-        renderFindings([]);
-      }
-    });
+        dom.cgList.innerHTML = slice
+          .map((record, idx) => {
+            const timestamp = record.timestamp || record.time || record['@timestamp'] || 'timestamp unknown';
+            const severity = record.severity || record.level || record.levelName || record.log_level;
+            const body = record.text || record.message || record.msg || record.content || JSON.stringify(record, null, 2);
+            return `
+              <div class="coralogix-record" key="${timestamp}-${idx}">
+                <div class="record-meta">
+                  <span class="timestamp">${timestamp}</span>
+                  ${severity ? `<span class="severity">${severity}</span>` : ''}
+                </div>
+                <pre class="record-body">${body}</pre>
+              </div>
+            `;
+          })
+          .join('');
+      };
 
-    function bufferToBase64(buffer) {
-      let binary = '';
-      const bytes = new Uint8Array(buffer);
-      const chunk = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-      }
-      return btoa(binary);
-    }
-
-    function formatLocalInput(date) {
-      const pad = value => `${value}`.padStart(2, '0');
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-    }
-
-    function setDefaultTimeframe() {
-      const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-      coralogixFrom.value = formatLocalInput(oneHourAgo);
-      coralogixTo.value = formatLocalInput(now);
-    }
-
-    function setCoralogixLoading(isLoading) {
-      coralogixButton.disabled = isLoading;
-      coralogixButton.textContent = isLoading ? 'Searching…' : 'Search Coralogix';
-      coralogixApiKey.disabled = isLoading;
-    }
-
-    function renderCoralogixResults() {
-      const limit = parseInt(coralogixLimit.value, 10) || 20;
-      const availableRecords = coralogixRecords.length;
-      const totalRecords = coralogixHits || availableRecords;
-      const totalPages = Math.max(1, Math.ceil(Math.max(availableRecords, 1) / limit));
-      if (coralogixPage > totalPages) {
-        coralogixPage = totalPages;
-      }
-
-      const startIndex = (coralogixPage - 1) * limit;
-      const slice = coralogixRecords.slice(startIndex, startIndex + limit);
-
-      coralogixList.innerHTML = '';
-      if (!slice.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No Coralogix results yet.';
-        empty.style.color = 'var(--text-muted)';
-        coralogixList.appendChild(empty);
-      } else {
-        const fragment = document.createDocumentFragment();
-        for (const record of slice) {
-          const item = document.createElement('div');
-          item.className = 'coralogix-record';
-
-          const meta = document.createElement('div');
-          meta.className = 'record-meta';
-          const timestamp = document.createElement('span');
-          timestamp.className = 'timestamp';
-          timestamp.textContent = record.timestamp || record.time || record['@timestamp'] || 'timestamp unknown';
-          meta.append(timestamp);
-          const severityValue = record.severity || record.level || record.levelName || record.log_level;
-          if (severityValue) {
-            const severity = document.createElement('span');
-            severity.className = 'severity';
-            severity.textContent = severityValue;
-            meta.append(severity);
-          }
-          item.append(meta);
-
-          const body = document.createElement('pre');
-          const text = record.text || record.message || record.msg || record.content;
-          body.textContent = text ? text : JSON.stringify(record, null, 2);
-          item.append(body);
-          fragment.appendChild(item);
-        }
-        coralogixList.appendChild(fragment);
-      }
-
-      const startDisplay = slice.length ? startIndex + 1 : 0;
-      const endDisplay = startIndex + slice.length;
-      coralogixCount.textContent = `Showing ${startDisplay}-${endDisplay} of ${totalRecords || 0} record(s)`;
-      coralogixHitCount.textContent = coralogixHits ? `${coralogixHits} total hit(s)` : '';
-      coralogixPageLabel.textContent = `Page ${coralogixPage} of ${totalPages}`;
-      coralogixPrev.disabled = coralogixPage <= 1;
-      coralogixNext.disabled = coralogixPage >= totalPages || !slice.length;
-    }
-
-    async function performCoralogixSearch(evt) {
-      evt.preventDefault();
-      if (!coralogixFrom.value || !coralogixTo.value) {
-        coralogixStatus.textContent = 'Please select a start and end time.';
-        return;
-      }
-
-      coralogixPage = 1;
-      const limit = parseInt(coralogixLimit.value, 10) || 20;
-      coralogixStatus.textContent = 'Searching Coralogix...';
-      setCoralogixLoading(true);
-
-      try {
-        const payload = {
-          query: coralogixQuery.value,
-          timeframe: { from: coralogixFrom.value, to: coralogixTo.value },
-          pagination: { limit, offset: 0 },
-        };
-
-        const apiKey = (coralogixApiKey.value || '').trim();
-        if (apiKey) {
-          payload.api_key = apiKey;
-        }
-
-        if (coralogixUseSummary.checked) {
-          payload.use_last_summary = true;
-        }
-
-        const response = await fetch('/coralogix-search', {
+      const postJson = async (path, payload) => {
+        const response = await fetch(path, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Coralogix search failed.');
+          const text = await response.text();
+          throw new Error(text || response.statusText);
         }
+        return response.json();
+      };
 
-        const data = await response.json();
-        coralogixRecords = Array.isArray(data.records) ? data.records : [];
-        coralogixHits = Number.isFinite(Number(data.hits)) ? Number(data.hits) : coralogixRecords.length;
-        coralogixStatus.textContent = data.message || 'Search complete.';
-        renderCoralogixResults();
-      } catch (err) {
-        console.error(err);
-        coralogixStatus.textContent = err.message || 'Coralogix search failed.';
-        coralogixRecords = [];
-        coralogixHits = 0;
-        renderCoralogixResults();
-      } finally {
-        setCoralogixLoading(false);
-      }
-    }
-
-    coralogixForm.addEventListener('submit', performCoralogixSearch);
-    coralogixPrev.addEventListener('click', () => {
-      if (coralogixPage <= 1) return;
-      coralogixPage -= 1;
-      renderCoralogixResults();
-    });
-    coralogixNext.addEventListener('click', () => {
-      coralogixPage += 1;
-      renderCoralogixResults();
-    });
-    coralogixLimit.addEventListener('change', () => {
-      coralogixPage = 1;
-      renderCoralogixResults();
-    });
-
-    function renderHistory(history) {
-      historyList.innerHTML = '';
-      if (!history.length) {
-        const empty = document.createElement('li');
-        empty.textContent = 'No analyses yet.';
-        empty.style.color = 'var(--text-muted)';
-        historyList.appendChild(empty);
-        return;
-      }
-
-      for (const entry of history) {
-        const item = document.createElement('li');
-        item.className = 'history-item';
-
-        const meta = document.createElement('div');
-        meta.className = 'history-meta';
-        const timestamp = document.createElement('span');
-        timestamp.textContent = entry.timestamp || '';
-        const count = document.createElement('span');
-        count.textContent = `${(entry.files || []).length} file(s)`;
-        meta.append(timestamp, count);
-
-        const files = document.createElement('div');
-        files.className = 'history-files';
-        files.textContent = (entry.files || []).join(', ');
-
-        const summary = document.createElement('p');
-        summary.className = 'history-summary';
-        summary.textContent = entry.message || '';
-
-        item.append(meta, files, summary);
-        historyList.appendChild(item);
-      }
-      }
-
-      renderHistory([]);
-
-    async function refreshSession() {
-      try {
-        const response = await fetch('/chatgpt/session');
-        if (!response.ok) return;
-        const data = await response.json();
-        if (!data.connected) {
-          sessionStatus.textContent = 'Not connected.';
-          sessionStatus.className = '';
-          return;
+      const handleLogin = async (token) => {
+        dom.sessionSubmit.disabled = true;
+        dom.sessionSubmit.textContent = 'Connecting…';
+        try {
+          const payload = await postJson('/chatgpt/login', { token });
+          state.session = { connected: payload.connected, text: payload.text || 'Connected.' };
+        } catch (error) {
+          state.session = { connected: false, text: error.message || 'Failed to connect.' };
+        } finally {
+          dom.sessionSubmit.disabled = false;
+          dom.sessionSubmit.textContent = 'Connect to ChatGPT';
+          dom.sessionStatus.textContent = state.session.text;
+          dom.sessionStatus.className = state.session.connected ? '' : 'muted';
         }
-        const badge = document.createElement('span');
-        badge.className = 'pill';
-        badge.textContent = data.account || 'ChatGPT account';
-        sessionStatus.innerHTML = '';
-        sessionStatus.append(badge);
-        const details = document.createElement('div');
-        details.textContent = data.resource_summary || 'Connected to ChatGPT.';
-        details.style.marginTop = '0.35rem';
-        sessionStatus.append(details);
-      } catch (err) {
-        console.error(err);
-        sessionStatus.textContent = 'Could not load ChatGPT session status.';
-      }
-    }
+      };
 
-    function renderFindings(findings) {
-      findingsList.innerHTML = '';
-      const hasFindings = Array.isArray(findings) && findings.length > 0;
-      findingsEmpty.style.display = hasFindings ? 'none' : 'block';
+      const loadSession = () => {
+        fetch('/chatgpt/session')
+          .then((res) => res.json())
+          .then((payload) => {
+            state.session = { connected: payload.connected, text: payload.text || 'Session state loaded.' };
+            dom.sessionStatus.textContent = state.session.text;
+            dom.sessionStatus.className = state.session.connected ? '' : 'muted';
+          })
+          .catch(() => {
+            state.session = { connected: false, text: 'Unable to load session state.' };
+            dom.sessionStatus.textContent = state.session.text;
+            dom.sessionStatus.className = 'muted';
+          });
+      };
 
-      if (!hasFindings) {
-        return;
-      }
+      const encodeFiles = async (files) =>
+        Promise.all(
+          files.map(async (file) => ({
+            name: file.name,
+            encoding: 'base64',
+            content: bufferToBase64(await file.arrayBuffer()),
+          })),
+        );
 
-      const fragment = document.createDocumentFragment();
-      for (const finding of findings) {
-        const item = document.createElement('div');
-        item.className = 'finding-line';
+      const analyzeFiles = async (fileList) => {
+        if (!fileList.length) return;
+        setBusy(true);
+        setMessage('Analyzing files…');
+        dom.lastFiles.textContent = `Last upload: ${fileList.map((file) => file.name).join(', ')}`;
+        try {
+          const encodedFiles = await encodeFiles(fileList);
+          const payload = await postJson('/analyze', { files: encodedFiles });
+          state.assistant = payload.assistant || '';
+          state.assistantError = payload.assistant_error || '';
+          state.localSummary = payload.local_summary || null;
+          state.findings = state.localSummary?.findings || [];
+          const entry = {
+            timestamp: new Date().toLocaleString(),
+            files: fileList.map((f) => f.name || 'uploaded'),
+            message: payload.message,
+          };
+          state.history = [entry, ...state.history].slice(0, 20);
+          setMessage(payload.message || 'Analysis complete.');
+        } catch (error) {
+          state.localSummary = null;
+          state.assistant = '';
+          state.assistantError = '';
+          state.findings = [];
+          setMessage(`Failed to analyze: ${error.message}`, true);
+        } finally {
+          setBusy(false);
+          renderResults();
+        }
+      };
 
-        const meta = document.createElement('div');
-        meta.className = 'finding-meta';
+      const searchCoralogix = async () => {
+        state.coralogix.loading = true;
+        state.coralogix.status = 'Searching…';
+        renderCoralogix();
+        try {
+          const payload = await postJson('/coralogix-search', {
+            query: state.coralogix.query,
+            timeframe: { from: state.coralogix.from, to: state.coralogix.to },
+            pagination: { limit: state.coralogix.limit },
+            use_last_summary: state.coralogix.useSummary,
+            api_key: state.coralogix.apiKey,
+          });
+          state.coralogix.results = payload.records || [];
+          state.coralogix.hits = payload.hits || 0;
+          state.coralogix.page = 1;
+          state.coralogix.status = payload.status || 'Search completed.';
+        } catch (error) {
+          state.coralogix.results = [];
+          state.coralogix.hits = 0;
+          state.coralogix.page = 1;
+          state.coralogix.status = error.message || 'Search failed.';
+        } finally {
+          state.coralogix.loading = false;
+          renderCoralogix();
+        }
+      };
 
-        const source = document.createElement('span');
-        source.className = 'finding-source';
-        source.textContent = `${finding.source || 'unknown'}:${finding.line_no ?? '?'}`;
+      dom.themeToggle.addEventListener('click', () => {
+        applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+      });
 
-        const category = document.createElement('span');
-        category.className = 'finding-category';
-        category.textContent = finding.category || 'error';
+      dom.sessionForm.addEventListener('submit', (evt) => {
+        evt.preventDefault();
+        handleLogin(dom.sessionToken.value.trim());
+      });
 
-        meta.append(source, category);
+      const handleFileSelection = (files) => {
+        if (!files.length) return;
+        analyzeFiles(Array.from(files));
+      };
 
-        const text = document.createElement('p');
-        text.className = 'finding-text';
-        text.textContent = finding.line || '';
+      dom.fileInput.addEventListener('change', (evt) => {
+        handleFileSelection(evt.target.files || []);
+        evt.target.value = '';
+      });
 
-        item.append(meta, text);
-        fragment.appendChild(item);
-      }
+      dom.dropZone.addEventListener('click', () => dom.fileInput.click());
+      dom.dropZone.addEventListener('keydown', (evt) => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+          evt.preventDefault();
+          dom.fileInput.click();
+        }
+      });
+      dom.dropZone.addEventListener('dragover', (evt) => {
+        evt.preventDefault();
+        dom.dropZone.classList.add('hover');
+      });
+      dom.dropZone.addEventListener('dragleave', (evt) => {
+        evt.preventDefault();
+        dom.dropZone.classList.remove('hover');
+      });
+      dom.dropZone.addEventListener('drop', (evt) => {
+        evt.preventDefault();
+        dom.dropZone.classList.remove('hover');
+        handleFileSelection(evt.dataTransfer?.files || []);
+      });
 
-      findingsList.appendChild(fragment);
-    }
+      dom.cgFrom.value = state.coralogix.from;
+      dom.cgTo.value = state.coralogix.to;
+      dom.cgLimit.value = String(state.coralogix.limit);
 
-    setDefaultTimeframe();
-    renderCoralogixResults();
-    renderFindings([]);
-    renderHistory([]);
+      dom.cgFrom.addEventListener('change', (e) => {
+        state.coralogix.from = e.target.value;
+      });
+      dom.cgTo.addEventListener('change', (e) => {
+        state.coralogix.to = e.target.value;
+      });
+      dom.cgLimit.addEventListener('change', (e) => {
+        state.coralogix.limit = parseInt(e.target.value, 10) || 20;
+        state.coralogix.page = 1;
+        renderCoralogix();
+      });
+      dom.cgQuery.addEventListener('input', (e) => {
+        state.coralogix.query = e.target.value;
+      });
+      dom.cgApi.addEventListener('input', (e) => {
+        state.coralogix.apiKey = e.target.value;
+      });
+      dom.cgSummary.addEventListener('change', (e) => {
+        state.coralogix.useSummary = e.target.checked;
+      });
+      dom.cgPrev.addEventListener('click', () => {
+        state.coralogix.page = Math.max(1, state.coralogix.page - 1);
+        renderCoralogix();
+      });
+      dom.cgNext.addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(Math.max(state.coralogix.results.length, 1) / state.coralogix.limit));
+        state.coralogix.page = Math.min(totalPages, state.coralogix.page + 1);
+        renderCoralogix();
+      });
+      dom.cgSearch.addEventListener('click', searchCoralogix);
+
+      initTheme();
+      loadSession();
+      renderResults();
+      renderCoralogix();
+    })();
   </script>
 </body>
 </html>
-"""
 
+"""
 
 HISTORY_LIMIT = 20
 _history: List[dict] = []
@@ -1011,13 +1044,13 @@ def _local_summary_payload(report: AnalysisReport) -> dict:
 def _assistant_prompt(report: AnalysisReport) -> str:
     header = _summarize(report)
     if not report.findings:
-        return textwrap.dedent(
-            f"""
-            Local summary: {header}
-
-            No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take.
-            """
-        ).strip()
+        return "\n".join(
+            [
+                f"Local summary: {header}",
+                "",
+                "No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take.",
+            ]
+        )
 
     sample = []
     for finding in report.findings[:8]:
@@ -1025,16 +1058,20 @@ def _assistant_prompt(report: AnalysisReport) -> str:
             f"{finding.source}:{finding.line_no} | {finding.category} | {finding.line[:240]}"
         )
 
-    return textwrap.dedent(
-        f"""
-        Local summary: {header}
+    prompt_lines = [
+        f"Local summary: {header}",
+        "",
+        "Here are representative log excerpts:",
+    ]
+    prompt_lines.extend("- " + line for line in sample)
+    prompt_lines.extend(
+        [
+            "",
+            "Provide 2-4 concise remediation recommendations tailored to these findings.",
+        ]
+    )
 
-        Here are representative log excerpts:
-        {chr(10).join('- ' + line for line in sample)}
-
-        Provide 2-4 concise remediation recommendations tailored to these findings.
-        """
-    ).strip()
+    return "\n".join(prompt_lines)
 
 
 def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
