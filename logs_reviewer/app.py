@@ -830,7 +830,6 @@ APP_HTML = """
   </script>
 </body>
 </html>
-"""
 
 HISTORY_LIMIT = 20
 _history: List[dict] = []
