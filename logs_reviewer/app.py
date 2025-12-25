@@ -1089,6 +1089,8 @@ def _assistant_prompt(report: AnalysisReport) -> str:
 
     return textwrap.dedent(prompt).strip()
 
+    return prompt
+
 
 def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
     api_key = os.getenv("OPENAI_API_KEY")
