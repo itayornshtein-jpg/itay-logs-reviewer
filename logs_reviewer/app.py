@@ -1069,13 +1069,10 @@ def _local_summary_payload(report: AnalysisReport) -> dict:
 def _assistant_prompt(report: AnalysisReport) -> str:
     header = _summarize(report)
     if not report.findings:
-        return textwrap.dedent(
-            f"""
-            Local summary: {header}
+        prompt = f"""Local summary: {header}
 
-            No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take.
-            """
-        ).strip()
+        No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take."""
+        return textwrap.dedent(prompt).strip()
 
     sample = []
     for finding in report.findings[:8]:
@@ -1083,16 +1080,14 @@ def _assistant_prompt(report: AnalysisReport) -> str:
             f"{finding.source}:{finding.line_no} | {finding.category} | {finding.line[:240]}"
         )
 
-    return textwrap.dedent(
-        f"""
-        Local summary: {header}
+    prompt = f"""Local summary: {header}
 
-        Here are representative log excerpts:
-        {chr(10).join('- ' + line for line in sample)}
+    Here are representative log excerpts:
+    {chr(10).join('- ' + line for line in sample)}
 
-        Provide 2-4 concise remediation recommendations tailored to these findings.
-        """
-    ).strip()
+    Provide 2-4 concise remediation recommendations tailored to these findings."""
+
+    return textwrap.dedent(prompt).strip()
 
 
 def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
