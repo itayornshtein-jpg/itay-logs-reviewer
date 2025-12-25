@@ -148,9 +148,6 @@ APP_HTML = """
       gap: 1rem;
     }
 
-    #results { display: none; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    #results.visible { display: grid; }
-
     .card,
     .panel {
       background: var(--card-bg);
@@ -255,556 +252,584 @@ APP_HTML = """
     footer { margin-top: 1.5rem; border-top: 1px solid var(--footer-border); padding-top: 1rem; color: var(--text-muted); }
   </style>
 </head>
-
 <body>
   <main>
-    <div id="root"></div>
+    <div id=\"root\"></div>
   </main>
 
-  <script>
-    (() => {
-      const root = document.getElementById('root');
-      const ACCEPTED_TYPES = '.log,.txt,.out,.err,.zip';
+  <script crossorigin src=\"https://unpkg.com/react@18/umd/react.production.min.js\"></script>
+  <script crossorigin src=\"https://unpkg.com/react-dom@18/umd/react-dom.production.min.js\"></script>
+  <script src=\"https://unpkg.com/@babel/standalone/babel.min.js\"></script>
+  <script type=\"text/babel\">
+    const { useEffect, useMemo, useRef, useState } = React;
+    const ACCEPTED_TYPES = '.log,.txt,.out,.err,.zip';
 
-      root.innerHTML = `
-        <div class="page-header">
-          <h1>Itay Logs Reviewer</h1>
-          <button type="button" id="theme-toggle" aria-label="Toggle theme">Switch to dark theme</button>
+    const bufferToBase64 = (buffer) => {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    };
+
+    const formatLocalInput = (date) => {
+      const pad = (value) => `${value}`.padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+
+    const defaultTimeframe = () => {
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      return { from: formatLocalInput(oneHourAgo), to: formatLocalInput(now) };
+    };
+
+    const ThemeToggle = ({ theme, onToggle }) => (
+      <button type=\"button\" onClick={onToggle} aria-label=\"Toggle theme\">
+        {theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      </button>
+    );
+
+    const SessionCard = ({ onLogin, sessionInfo, loading }) => {
+      const [token, setToken] = useState('');
+
+      const handleSubmit = async (evt) => {
+        evt.preventDefault();
+        await onLogin(token);
+      };
+
+      return (
+        <section className=\"panel\" aria-label=\"ChatGPT login\">
+          <h2>ChatGPT login</h2>
+          <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
+          <form onSubmit={handleSubmit} className=\"session-grid\">
+            <label htmlFor=\"sso-token\">ChatGPT SSO token</label>
+            <input
+              id=\"sso-token\"
+              type=\"text\"
+              name=\"sso-token\"
+              placeholder=\"Enter token or leave blank to use CHATGPT_SSO_TOKEN\"
+              autoComplete=\"off\"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+            />
+            <button className=\"primary-btn\" type=\"submit\" disabled={loading}>
+              {loading ? 'Connecting…' : 'Connect to ChatGPT'}
+            </button>
+            <p className={sessionInfo.connected ? '' : 'muted'}>{sessionInfo.text}</p>
+          </form>
+        </section>
+      );
+    };
+
+    const DropZone = ({ onFiles, busy, helperText, message }) => {
+      const [hover, setHover] = useState(false);
+      const fileInput = useRef(null);
+      const [lastFiles, setLastFiles] = useState([]);
+
+      const handleFiles = (files) => {
+        if (!files.length) return;
+        setLastFiles(files.map((file) => file.name));
+        onFiles(files);
+      };
+
+      const onDrop = (evt) => {
+        evt.preventDefault();
+        setHover(false);
+        const files = Array.from(evt.dataTransfer?.files || []);
+        handleFiles(files);
+      };
+
+      const onClick = (evt) => {
+        evt.preventDefault();
+        fileInput.current?.click();
+      };
+
+      const onKeyDown = (evt) => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+          evt.preventDefault();
+          fileInput.current?.click();
+        }
+      };
+
+      return (
+        <div className=\"panel\">
+          <div
+            id=\"drop-zone\"
+            role=\"button\"
+            tabIndex={0}
+            aria-label=\"Select or drop log files\"
+            className={hover ? 'hover' : ''}
+            onDragEnter={(e) => { e.preventDefault(); setHover(true); }}
+            onDragOver={(e) => { e.preventDefault(); setHover(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setHover(false); }}
+            onDrop={onDrop}
+            onClick={onClick}
+            onKeyDown={onKeyDown}
+          >
+            <p style={{ margin: 0, fontSize: '1.1rem' }}>Drag one or more log files here</p>
+            <small>Accepted: .log, .txt, .out, .err, and zip archives. Click to choose files.</small>
+            <input
+              ref={fileInput}
+              id=\"file-input\"
+              type=\"file\"
+              multiple
+              accept={ACCEPTED_TYPES}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                handleFiles(files);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          <div id=\"output-line\" style={{ marginTop: '0.75rem', fontWeight: 600 }}>
+            {busy ? 'Processing logs…' : message || 'Drop a file to get started.'}
+          </div>
+          {!!lastFiles.length && (
+            <p className=\"muted\" style={{ marginTop: '0.35rem' }}>
+              Last selected: {lastFiles.join(', ')}
+            </p>
+          )}
+          <p className=\"muted\" style={{ marginTop: '0.35rem', fontSize: '0.9rem' }}>{helperText}</p>
         </div>
+      );
+    };
 
-        <div class="card-grid">
-          <section class="panel" aria-label="ChatGPT login">
-            <h2>ChatGPT login</h2>
-            <p>Connect with your ChatGPT SSO token to use your account resources while analyzing logs.</p>
-            <form id="session-form" class="session-grid">
-              <label for="sso-token">ChatGPT SSO token</label>
-              <input
-                id="sso-token"
-                type="text"
-                name="sso-token"
-                placeholder="Enter token or leave blank to use CHATGPT_SSO_TOKEN"
-                autocomplete="off"
-              />
-              <button class="primary-btn" type="submit" id="session-submit">Connect to ChatGPT</button>
-              <p id="session-status" class="muted">Not connected.</p>
-            </form>
-          </section>
+    const SummarySection = ({ localSummary, fallbackText }) => {
+      if (!localSummary) {
+        return <p className=\"muted\">{fallbackText || 'Drop a file to get started.'}</p>;
+      }
 
-          <section class="card" aria-label="Upload logs">
-            <div id="drop-zone" role="button" tabindex="0" aria-busy="false" aria-label="Drop logs or click to select">
-              <input id="file-input" type="file" multiple accept="${ACCEPTED_TYPES}" style="display: none" />
-              <p style="margin: 0; font-weight: 700">Drop your log files or click to select</p>
-              <p class="muted" style="margin-bottom: 0.5rem">Nothing is uploaded anywhere—everything stays local to this app.</p>
-              <p class="pill" id="drop-status">Idle</p>
-              <p id="drop-message" style="margin: 0.35rem 0 0">Drop a file to get started.</p>
-              <p class="muted" id="last-files" style="margin: 0.35rem 0 0"></p>
+      const sections = [];
+
+      if (localSummary.overview) {
+        sections.push(
+          <p key=\"overview\" style={{ margin: '0 0 0.5rem 0' }}>
+            {localSummary.overview}
+          </p>
+        );
+      }
+
+      if (localSummary.resize_actions?.length) {
+        sections.push(
+          <div key=\"resize\" style={{ marginTop: '0.75rem' }}>
+            <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-strong)' }}>
+              Resize actions (last 5 per UUID)
+            </h3>
+            <ul style={{ margin: 0 }}>
+              {localSummary.resize_actions.map((action) => (
+                <li key={action.uuid}>
+                  <strong>{action.uuid}</strong>
+                  {action.entries?.length ? (
+                    <ul>
+                      {action.entries.map((entry, idx) => (
+                        <li key={`${action.uuid}-${idx}`}>
+                          {entry.status} (line {entry.line_no}): {entry.line}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+
+      const tailSection = (title, lines, id) => (
+        <div key={id} style={{ marginTop: '0.75rem' }}>
+          <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-strong)' }}>{title}</h3>
+          <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{(lines || []).length ? lines.join('\n') : 'No entries found.'}</pre>
+        </div>
+      );
+
+      sections.push(tailSection('collectorHC.log (last 5 lines)', localSummary.collector_tail || [], 'collector'));
+      sections.push(tailSection('agent.log (last 15 lines)', localSummary.agent_tail || [], 'agent'));
+
+      const errors = localSummary.errors || localSummary.unique_errors || [];
+      sections.push(
+        <div key=\"errors\" style={{ marginTop: '0.75rem' }}>
+          <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-strong)' }}>Errors</h3>
+          {errors.length ? (
+            <ul style={{ margin: 0 }}>
+              {errors.map((finding, idx) => (
+                <li key={`${finding.source}-${finding.line_no}-${idx}`}>
+                  {finding.source}:{finding.line_no} — {finding.line}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={{ margin: 0 }}>No error patterns detected across logs.</p>
+          )}
+        </div>
+      );
+
+      return <>{sections}</>;
+    };
+
+    const AssistantSection = ({ text, error }) => (
+      <div>
+        <p className={!text ? 'muted' : ''}>{text || 'Waiting for input.'}</p>
+        {error ? <p className=\"error\" style={{ margin: 0 }}>{error}</p> : null}
+      </div>
+    );
+
+    const FindingsList = ({ findings }) => {
+      const hasFindings = Array.isArray(findings) && findings.length > 0;
+      if (!hasFindings) {
+        return <p className=\"muted\" id=\"findings-empty\">No findings yet.</p>;
+      }
+      return (
+        <div id=\"findings-list\">
+          {findings.map((finding, idx) => (
+            <div key={`${finding.source}-${finding.line_no}-${idx}`} className=\"finding-line\">
+              <div className=\"finding-meta\">
+                <span className=\"finding-source\">{`${finding.source || 'unknown'}:${finding.line_no ?? '?'}`}</span>
+                <span className=\"finding-category\">{finding.category || 'error'}</span>
+              </div>
+              <p className=\"finding-text\">{finding.line || ''}</p>
             </div>
-          </section>
+          ))}
         </div>
+      );
+    };
 
-        <section id="results" class="results-grid">
-          <div class="card">
-            <h2>Local summary</h2>
-            <div id="local-summary" class="muted">Waiting for input.</div>
-          </div>
-          <div class="card">
-            <h2>ChatGPT recommendations</h2>
-            <div id="assistant-text" class="muted">No recommendations yet.</div>
-          </div>
-        </section>
+    const HistoryList = ({ history }) => {
+      if (!history.length) {
+        return <p className=\"muted\">No analyses yet.</p>;
+      }
+      return (
+        <ul id=\"history-list\" className=\"list-reset\">
+          {history.map((entry, idx) => (
+            <li className=\"history-item\" key={`${entry.timestamp}-${idx}`}>
+              <div className=\"history-meta\">
+                <span>{entry.timestamp || ''}</span>
+                <span>{(entry.files || []).length} file(s)</span>
+              </div>
+              <div className=\"history-files\">{(entry.files || []).join(', ')}</div>
+              <p className=\"history-summary\">{entry.message || ''}</p>
+            </li>
+          ))}
+        </ul>
+      );
+    };
 
-        <section class="card" style="margin-top: 1rem">
-          <h2>Findings</h2>
-          <div id="findings-list" class="muted">No findings yet.</div>
-        </section>
+    const CoralogixPanel = ({ onSearch, state, setState }) => {
+      const { query, from, to, limit, results, hits, page, status, useSummary, apiKey, loading } = state;
 
-        <section class="card" style="margin-top: 1rem">
-          <h2>History</h2>
-          <ul id="history-list" class="list-reset muted"><li>No analyses yet.</li></ul>
-        </section>
+      const totalPages = Math.max(1, Math.ceil(Math.max(results.length, 1) / limit));
+      const startIndex = (page - 1) * limit;
+      const slice = results.slice(startIndex, startIndex + limit);
 
-        <section class="panel" aria-label="Coralogix search">
+      const updateField = (key, value) => setState((prev) => ({ ...prev, [key]: value }));
+
+      return (
+        <section className=\"panel\" aria-label=\"Coralogix search\">
           <h2>Coralogix search</h2>
-          <div class="coralogix-grid">
-            <div class="coralogix-row">
-              <input type="datetime-local" id="cg-from" aria-label="From" />
-              <input type="datetime-local" id="cg-to" aria-label="To" />
-              <select id="cg-limit" aria-label="Limit">
-                <option value="10">10 per page</option>
-                <option value="20" selected>20 per page</option>
-                <option value="50">50 per page</option>
-                <option value="100">100 per page</option>
+          <div className=\"coralogix-grid\">
+            <div className=\"coralogix-row\">
+              <input type=\"datetime-local\" value={from} onChange={(e) => updateField('from', e.target.value)} aria-label=\"From\" />
+              <input type=\"datetime-local\" value={to} onChange={(e) => updateField('to', e.target.value)} aria-label=\"To\" />
+              <select value={limit} onChange={(e) => updateField('limit', parseInt(e.target.value, 10) || 20)} aria-label=\"Limit\">
+                {[10, 20, 50, 100].map((value) => (
+                  <option key={value} value={value}>{value} per page</option>
+                ))}
               </select>
             </div>
-            <div class="coralogix-row">
-              <textarea id="cg-query" placeholder="Query"></textarea>
+            <div className=\"coralogix-row\">
+              <textarea placeholder=\"Query\" value={query} onChange={(e) => updateField('query', e.target.value)} />
             </div>
-            <div class="coralogix-row">
-              <input type="text" id="cg-api" placeholder="Optional API key" />
-              <label style="display: flex; align-items: center; gap: 0.4rem">
-                <input type="checkbox" id="cg-summary" />
+            <div className=\"coralogix-row\">
+              <input type=\"text\" placeholder=\"Optional API key\" value={apiKey} onChange={(e) => updateField('apiKey', e.target.value)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <input type=\"checkbox\" checked={useSummary} onChange={(e) => updateField('useSummary', e.target.checked)} />
                 Use last summary in query
               </label>
-              <button class="primary-btn" type="button" id="cg-search">Search Coralogix</button>
+              <button className=\"primary-btn\" type=\"button\" onClick={onSearch} disabled={loading}>
+                {loading ? 'Searching…' : 'Search Coralogix'}
+              </button>
             </div>
-            <p class="muted" id="cg-status">Select a timeframe and run a search.</p>
+            <p className=\"muted\">{status}</p>
           </div>
 
-          <div style="margin-top: 0.5rem">
-            <p class="muted" id="cg-range" style="margin-bottom: 0">Showing 0-0 of 0 record(s)</p>
-            <p class="muted" id="cg-page" style="margin-top: 0.2rem">Page 1 of 1</p>
-            <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem">
-              <button type="button" class="page-header button" style="padding: 0.35rem 0.8rem" id="cg-prev" disabled>Prev</button>
-              <button type="button" class="page-header button" style="padding: 0.35rem 0.8rem" id="cg-next" disabled>Next</button>
+          <div style={{ marginTop: '0.5rem' }}>
+            <p className=\"muted\" style={{ marginBottom: 0 }}>
+              Showing {slice.length ? startIndex + 1 : 0}-{startIndex + slice.length} of {hits || results.length} record(s)
+            </p>
+            <p className=\"muted\" style={{ marginTop: '0.2rem' }}>
+              Page {page} of {totalPages} {hits ? `(${hits} total hit(s))` : ''}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+              <button type=\"button\" className=\"page-header button\" style={{ padding: '0.35rem 0.8rem' }} disabled={page <= 1}
+                onClick={() => setState((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}>
+                Prev
+              </button>
+              <button type=\"button\" className=\"page-header button\" style={{ padding: '0.35rem 0.8rem' }}
+                disabled={page >= totalPages || !slice.length}
+                onClick={() => setState((prev) => ({ ...prev, page: prev.page + 1 }))}>
+                Next
+              </button>
             </div>
           </div>
 
-          <div id="coralogix-list" style="margin-top: 0.75rem">
-            <p class="muted">No Coralogix results yet.</p>
+          <div id=\"coralogix-list\" style={{ marginTop: '0.75rem' }}>
+            {!slice.length ? (
+              <p className=\"muted\">No Coralogix results yet.</p>
+            ) : (
+              slice.map((record, idx) => (
+                <div className=\"coralogix-record\" key={`${record['@timestamp'] || record.time || idx}-${idx}`}>
+                  <div className=\"record-meta\">
+                    <span className=\"timestamp\">{record.timestamp || record.time || record['@timestamp'] || 'timestamp unknown'}</span>
+                    {record.severity || record.level || record.levelName || record.log_level ? (
+                      <span className=\"severity\">{record.severity || record.level || record.levelName || record.log_level}</span>
+                    ) : null}
+                  </div>
+                  <pre className=\"record-body\">{record.text || record.message || record.msg || record.content || JSON.stringify(record, null, 2)}</pre>
+                </div>
+              ))
+            )}
           </div>
         </section>
+      );
+    };
 
-        <footer>
-          Drop your logs to see a quick summary of findings. Remote queries use Coralogix via your configured credentials.
-        </footer>
-      `;
+    const App = () => {
+      const [theme, setTheme] = useState('light');
+      const [message, setMessage] = useState('Drop a file to get started.');
+      const [assistant, setAssistant] = useState('Waiting for input.');
+      const [assistantError, setAssistantError] = useState('');
+      const [localSummary, setLocalSummary] = useState(null);
+      const [findings, setFindings] = useState([]);
+      const [history, setHistory] = useState([]);
+      const [resultsVisible, setResultsVisible] = useState(false);
+      const [busy, setBusy] = useState(false);
+      const [sessionInfo, setSessionInfo] = useState({ connected: false, text: 'Not connected.' });
+      const [sessionLoading, setSessionLoading] = useState(false);
+      const [coralogixState, setCoralogixState] = useState({
+        query: '',
+        from: defaultTimeframe().from,
+        to: defaultTimeframe().to,
+        limit: 20,
+        results: [],
+        hits: 0,
+        page: 1,
+        status: 'Select a timeframe and run a search.',
+        useSummary: false,
+        apiKey: '',
+        loading: false,
+      });
 
-      const bufferToBase64 = (buffer) => {
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-        }
-        return btoa(binary);
-      };
-
-      const formatLocalInput = (date) => {
-        const pad = (value) => `${value}`.padStart(2, '0');
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-      };
-
-      const defaultTimeframe = () => {
-        const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        return { from: formatLocalInput(oneHourAgo), to: formatLocalInput(now) };
-      };
-
-      const dom = {
-        themeToggle: document.getElementById('theme-toggle'),
-        dropZone: document.getElementById('drop-zone'),
-        fileInput: document.getElementById('file-input'),
-        dropStatus: document.getElementById('drop-status'),
-        dropMessage: document.getElementById('drop-message'),
-        lastFiles: document.getElementById('last-files'),
-        results: document.getElementById('results'),
-        localSummary: document.getElementById('local-summary'),
-        assistant: document.getElementById('assistant-text'),
-        findings: document.getElementById('findings-list'),
-        history: document.getElementById('history-list'),
-        sessionForm: document.getElementById('session-form'),
-        sessionToken: document.getElementById('sso-token'),
-        sessionStatus: document.getElementById('session-status'),
-        sessionSubmit: document.getElementById('session-submit'),
-        cgFrom: document.getElementById('cg-from'),
-        cgTo: document.getElementById('cg-to'),
-        cgLimit: document.getElementById('cg-limit'),
-        cgQuery: document.getElementById('cg-query'),
-        cgApi: document.getElementById('cg-api'),
-        cgSummary: document.getElementById('cg-summary'),
-        cgSearch: document.getElementById('cg-search'),
-        cgStatus: document.getElementById('cg-status'),
-        cgRange: document.getElementById('cg-range'),
-        cgPage: document.getElementById('cg-page'),
-        cgPrev: document.getElementById('cg-prev'),
-        cgNext: document.getElementById('cg-next'),
-        cgList: document.getElementById('coralogix-list'),
-      };
-
-      const state = {
-        theme: 'light',
-        busy: false,
-        message: 'Drop a file to get started.',
-        assistant: '',
-        assistantError: '',
-        localSummary: null,
-        findings: [],
-        history: [],
-        session: { connected: false, text: 'Not connected.' },
-        coralogix: {
-          query: '',
-          from: defaultTimeframe().from,
-          to: defaultTimeframe().to,
-          limit: 20,
-          results: [],
-          hits: 0,
-          page: 1,
-          status: 'Select a timeframe and run a search.',
-          useSummary: false,
-          apiKey: '',
-          loading: false,
-        },
-      };
-
-      const applyTheme = (theme) => {
-        document.documentElement.setAttribute('data-theme', theme);
-        state.theme = theme;
-        localStorage.setItem('theme', theme);
-        dom.themeToggle.textContent = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
-      };
-
-      const initTheme = () => {
+      useEffect(() => {
         const stored = localStorage.getItem('theme');
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        applyTheme(stored || (prefersDark ? 'dark' : 'light'));
-      };
+        const nextTheme = stored || (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', nextTheme);
+        setTheme(nextTheme);
+      }, []);
 
-      const setBusy = (busy) => {
-        state.busy = busy;
-        dom.dropStatus.textContent = busy ? 'Analyzing…' : 'Idle';
-        dom.dropZone.setAttribute('aria-busy', String(busy));
-      };
-
-      const setMessage = (text, isError = false) => {
-        state.message = text || '';
-        dom.dropMessage.textContent = state.message || 'Drop a file to get started.';
-        dom.dropMessage.classList.toggle('error', isError);
-      };
-
-      const renderFindings = () => {
-        if (!state.findings.length) {
-          dom.findings.className = 'muted';
-          dom.findings.textContent = 'No findings yet.';
-          return;
-        }
-        dom.findings.className = '';
-        dom.findings.innerHTML = state.findings
-          .map(
-            (finding) => `
-              <div class="finding-line">
-                <div class="finding-meta">
-                  <span class="finding-source">${finding.source || 'unknown'}:${finding.line_no ?? '?'}</span>
-                  <span class="finding-category">${finding.category || 'error'}</span>
-                </div>
-                <p class="finding-text">${finding.line || ''}</p>
-              </div>
-            `,
-          )
-          .join('');
-      };
-
-      const renderHistory = () => {
-        if (!state.history.length) {
-          dom.history.className = 'list-reset muted';
-          dom.history.innerHTML = '<li>No analyses yet.</li>';
-          return;
-        }
-        dom.history.className = 'list-reset';
-        dom.history.innerHTML = state.history
-          .map(
-            (entry) => `
-              <li class="history-item">
-                <div class="history-meta">
-                  <span>${entry.timestamp || ''}</span>
-                  <span>${(entry.files || []).length} file(s)</span>
-                </div>
-                <div class="history-files">${(entry.files || []).join(', ')}</div>
-                <p class="history-summary">${entry.message || ''}</p>
-              </li>
-            `,
-          )
-          .join('');
-      };
-
-      const renderSummary = () => {
-        if (!state.localSummary) {
-          dom.localSummary.className = 'muted';
-          dom.localSummary.textContent = state.message || 'Waiting for input.';
-          return;
-        }
-
-        const categories = Object.entries(state.localSummary.by_category || {});
-        const repeats = state.localSummary.top_repeats || [];
-        dom.localSummary.className = '';
-        dom.localSummary.innerHTML = `
-          <p><strong>${state.localSummary.scanned_sources}</strong> source(s) scanned. <strong>${state.localSummary.total_findings}</strong> finding(s) detected.</p>
-          <div class="summary-grid">
-            <div>
-              <h3 style="margin-bottom: 0.3rem">By category</h3>
-              ${
-                categories.length
-                  ? `<ul class="list-reset">${categories
-                      .map(([category, count]) => `<li style="padding: 0.1rem 0"><strong>${count}</strong> ${category}</li>`)
-                      .join('')}</ul>`
-                  : '<p class="muted">No findings yet.</p>'
-              }
-            </div>
-            <div>
-              <h3 style="margin-bottom: 0.3rem">Top repeats</h3>
-              ${
-                repeats.length
-                  ? `<ul class="list-reset">${repeats
-                      .map((repeat) => `<li style="padding: 0.1rem 0"><strong>${repeat.count}×</strong> ${repeat.message}</li>`)
-                      .join('')}</ul>`
-                  : '<p class="muted">No repeats detected.</p>'
-              }
-            </div>
-          </div>
-        `;
-      };
-
-      const renderAssistant = () => {
-        if (state.assistantError) {
-          dom.assistant.className = 'error';
-          dom.assistant.textContent = state.assistantError;
-          return;
-        }
-        dom.assistant.className = state.assistant ? '' : 'muted';
-        dom.assistant.textContent = state.assistant || 'No recommendations yet.';
-      };
-
-      const renderResults = () => {
-        const shouldShow = Boolean(state.localSummary || state.assistant || state.message);
-        dom.results.classList.toggle('visible', shouldShow);
-        renderSummary();
-        renderAssistant();
-        renderFindings();
-        renderHistory();
-      };
-
-      const renderCoralogix = () => {
-        const { results, hits, page, limit } = state.coralogix;
-        const totalPages = Math.max(1, Math.ceil(Math.max(results.length, 1) / limit));
-        const startIndex = (page - 1) * limit;
-        const slice = results.slice(startIndex, startIndex + limit);
-
-        dom.cgRange.textContent = `Showing ${slice.length ? startIndex + 1 : 0}-${startIndex + slice.length} of ${hits || results.length} record(s)`;
-        dom.cgPage.textContent = `Page ${page} of ${totalPages}${hits ? ` (${hits} total hit(s))` : ''}`;
-        dom.cgPrev.disabled = page <= 1;
-        dom.cgNext.disabled = page >= totalPages || !slice.length;
-        dom.cgStatus.textContent = state.coralogix.status || '';
-        dom.cgSearch.textContent = state.coralogix.loading ? 'Searching…' : 'Search Coralogix';
-        dom.cgSearch.disabled = state.coralogix.loading;
-
-        if (!slice.length) {
-          dom.cgList.innerHTML = '<p class="muted">No Coralogix results yet.</p>';
-          return;
-        }
-
-        dom.cgList.innerHTML = slice
-          .map((record, idx) => {
-            const timestamp = record.timestamp || record.time || record['@timestamp'] || 'timestamp unknown';
-            const severity = record.severity || record.level || record.levelName || record.log_level;
-            const body = record.text || record.message || record.msg || record.content || JSON.stringify(record, null, 2);
-            return `
-              <div class="coralogix-record" key="${timestamp}-${idx}">
-                <div class="record-meta">
-                  <span class="timestamp">${timestamp}</span>
-                  ${severity ? `<span class="severity">${severity}</span>` : ''}
-                </div>
-                <pre class="record-body">${body}</pre>
-              </div>
-            `;
-          })
-          .join('');
-      };
-
-      const postJson = async (path, payload) => {
-        const response = await fetch(path, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+      const toggleTheme = () => {
+        setTheme((prev) => {
+          const next = prev === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          return next;
         });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(text || response.statusText);
-        }
-        return response.json();
       };
+
+      const refreshSession = async () => {
+        try {
+          const response = await fetch('/chatgpt/session');
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data.connected) {
+            setSessionInfo({ connected: false, text: 'Not connected.' });
+            return;
+          }
+          const badge = data.account || 'ChatGPT account';
+          const details = data.resource_summary || 'Connected to ChatGPT.';
+          setSessionInfo({ connected: true, text: `${badge} — ${details}` });
+        } catch (err) {
+          console.error(err);
+          setSessionInfo({ connected: false, text: 'Could not load ChatGPT session status.' });
+        }
+      };
+
+      useEffect(() => { refreshSession(); }, []);
 
       const handleLogin = async (token) => {
-        dom.sessionSubmit.disabled = true;
-        dom.sessionSubmit.textContent = 'Connecting…';
+        setSessionLoading(true);
         try {
-          const payload = await postJson('/chatgpt/login', { token });
-          state.session = { connected: payload.connected, text: payload.text || 'Connected.' };
-        } catch (error) {
-          state.session = { connected: false, text: error.message || 'Failed to connect.' };
+          const response = await fetch('/chatgpt/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sso_token: token || undefined }),
+          });
+          const data = await response.json();
+          const text = data.message || (data.connected ? 'Connected to ChatGPT.' : 'Not connected.');
+          setSessionInfo({ connected: !!data.connected, text });
+        } catch (err) {
+          console.error(err);
+          setSessionInfo({ connected: false, text: 'Could not connect to ChatGPT.' });
         } finally {
-          dom.sessionSubmit.disabled = false;
-          dom.sessionSubmit.textContent = 'Connect to ChatGPT';
-          dom.sessionStatus.textContent = state.session.text;
-          dom.sessionStatus.className = state.session.connected ? '' : 'muted';
+          setSessionLoading(false);
         }
       };
 
-      const loadSession = () => {
-        fetch('/chatgpt/session')
-          .then((res) => res.json())
-          .then((payload) => {
-            state.session = { connected: payload.connected, text: payload.text || 'Session state loaded.' };
-            dom.sessionStatus.textContent = state.session.text;
-            dom.sessionStatus.className = state.session.connected ? '' : 'muted';
-          })
-          .catch(() => {
-            state.session = { connected: false, text: 'Unable to load session state.' };
-            dom.sessionStatus.textContent = state.session.text;
-            dom.sessionStatus.className = 'muted';
-          });
-      };
-
-      const encodeFiles = async (files) =>
-        Promise.all(
-          files.map(async (file) => ({
-            name: file.name,
-            encoding: 'base64',
-            content: bufferToBase64(await file.arrayBuffer()),
-          })),
-        );
-
-      const analyzeFiles = async (fileList) => {
-        if (!fileList.length) return;
+      const handleFiles = async (files) => {
+        if (!files.length) {
+          setMessage('No files detected.');
+          return;
+        }
         setBusy(true);
-        setMessage('Analyzing files…');
-        dom.lastFiles.textContent = `Last upload: ${fileList.map((file) => file.name).join(', ')}`;
+        setMessage('Processing logs...');
+        setAssistant('Waiting for ChatGPT...');
+        setAssistantError('');
         try {
-          const encodedFiles = await encodeFiles(fileList);
-          const payload = await postJson('/analyze', { files: encodedFiles });
-          state.assistant = payload.assistant || '';
-          state.assistantError = payload.assistant_error || '';
-          state.localSummary = payload.local_summary || null;
-          state.findings = state.localSummary?.findings || [];
-          const entry = {
-            timestamp: new Date().toLocaleString(),
-            files: fileList.map((f) => f.name || 'uploaded'),
-            message: payload.message,
-          };
-          state.history = [entry, ...state.history].slice(0, 20);
-          setMessage(payload.message || 'Analysis complete.');
-        } catch (error) {
-          state.localSummary = null;
-          state.assistant = '';
-          state.assistantError = '';
-          state.findings = [];
-          setMessage(`Failed to analyze: ${error.message}`, true);
+          const payload = [];
+          for (const file of files) {
+            if (file.name.toLowerCase().endsWith('.zip')) {
+              const buffer = await file.arrayBuffer();
+              payload.push({ name: file.name, content: bufferToBase64(buffer), encoding: 'base64' });
+            } else {
+              const content = await file.text();
+              payload.push({ name: file.name, content, encoding: 'text' });
+            }
+          }
+
+          const response = await fetch('/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: payload }),
+          });
+
+          if (!response.ok) {
+            setMessage('Could not analyze logs.');
+            setFindings([]);
+            return;
+          }
+
+          const data = await response.json();
+          setLocalSummary(data.local_summary || null);
+          setAssistant(data.assistant || (data.assistant_error ? 'Unavailable.' : 'Waiting for input.'));
+          setAssistantError(data.assistant_error || '');
+          setFindings(Array.isArray(data.findings) ? data.findings : []);
+          setHistory(Array.isArray(data.history) ? data.history.slice(0, 20) : []);
+          setMessage(data.message || 'Analysis complete.');
+          setResultsVisible(true);
+        } catch (err) {
+          console.error(err);
+          setMessage('Something went wrong.');
+          setFindings([]);
         } finally {
           setBusy(false);
-          renderResults();
         }
       };
 
       const searchCoralogix = async () => {
-        state.coralogix.loading = true;
-        state.coralogix.status = 'Searching…';
-        renderCoralogix();
+        if (!coralogixState.from || !coralogixState.to) {
+          setCoralogixState((prev) => ({ ...prev, status: 'Please select a start and end time.' }));
+          return;
+        }
+
+        setCoralogixState((prev) => ({ ...prev, status: 'Searching Coralogix...', loading: true, page: 1 }));
         try {
-          const payload = await postJson('/coralogix-search', {
-            query: state.coralogix.query,
-            timeframe: { from: state.coralogix.from, to: state.coralogix.to },
-            pagination: { limit: state.coralogix.limit },
-            use_last_summary: state.coralogix.useSummary,
-            api_key: state.coralogix.apiKey,
+          const payload = {
+            query: coralogixState.query,
+            timeframe: { from: coralogixState.from, to: coralogixState.to },
+            pagination: { limit: coralogixState.limit, offset: 0 },
+          };
+
+          if ((coralogixState.apiKey || '').trim()) {
+            payload.api_key = coralogixState.apiKey.trim();
+          }
+          if (coralogixState.useSummary) {
+            payload.use_last_summary = true;
+          }
+
+          const response = await fetch('/coralogix-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
           });
-          state.coralogix.results = payload.records || [];
-          state.coralogix.hits = payload.hits || 0;
-          state.coralogix.page = 1;
-          state.coralogix.status = payload.status || 'Search completed.';
-        } catch (error) {
-          state.coralogix.results = [];
-          state.coralogix.hits = 0;
-          state.coralogix.page = 1;
-          state.coralogix.status = error.message || 'Search failed.';
-        } finally {
-          state.coralogix.loading = false;
-          renderCoralogix();
+
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Coralogix search failed.');
+          }
+
+          const data = await response.json();
+          const records = Array.isArray(data.records) ? data.records : [];
+          const hits = Number.isFinite(Number(data.hits)) ? Number(data.hits) : records.length;
+          setCoralogixState((prev) => ({
+            ...prev,
+            results: records,
+            hits,
+            status: data.message || 'Search complete.',
+            loading: false,
+            page: 1,
+          }));
+        } catch (err) {
+          console.error(err);
+          setCoralogixState((prev) => ({
+            ...prev,
+            results: [],
+            hits: 0,
+            status: err.message || 'Coralogix search failed.',
+            loading: false,
+            page: 1,
+          }));
         }
       };
 
-      dom.themeToggle.addEventListener('click', () => {
-        applyTheme(state.theme === 'dark' ? 'light' : 'dark');
-      });
+      return (
+        <div>
+          <div className=\"page-header\">
+            <h1>Itay Logs Reviewer</h1>
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          </div>
 
-      dom.sessionForm.addEventListener('submit', (evt) => {
-        evt.preventDefault();
-        handleLogin(dom.sessionToken.value.trim());
-      });
+          <div className=\"card-grid\">
+            <SessionCard onLogin={handleLogin} sessionInfo={sessionInfo} loading={sessionLoading} />
+            <DropZone onFiles={handleFiles} busy={busy} helperText=\"Nothing is uploaded anywhere—everything stays local to this app.\" message={message} />
+          </div>
 
-      const handleFileSelection = (files) => {
-        if (!files.length) return;
-        analyzeFiles(Array.from(files));
-      };
+          <section id=\"results\" style={{ marginTop: '1.25rem', display: resultsVisible ? 'grid' : 'none', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+            <div className=\"card\">
+              <h2>Local summary</h2>
+              <SummarySection localSummary={localSummary} fallbackText={message} />
+            </div>
+            <div className=\"card\">
+              <h2>ChatGPT recommendations</h2>
+              <AssistantSection text={assistant} error={assistantError} />
+            </div>
+          </section>
 
-      dom.fileInput.addEventListener('change', (evt) => {
-        handleFileSelection(evt.target.files || []);
-        evt.target.value = '';
-      });
+          <section className=\"card\" style={{ marginTop: '1rem' }}>
+            <h2>Findings</h2>
+            <FindingsList findings={findings} />
+          </section>
 
-      dom.dropZone.addEventListener('click', () => dom.fileInput.click());
-      dom.dropZone.addEventListener('keydown', (evt) => {
-        if (evt.key === 'Enter' || evt.key === ' ') {
-          evt.preventDefault();
-          dom.fileInput.click();
-        }
-      });
-      dom.dropZone.addEventListener('dragover', (evt) => {
-        evt.preventDefault();
-        dom.dropZone.classList.add('hover');
-      });
-      dom.dropZone.addEventListener('dragleave', (evt) => {
-        evt.preventDefault();
-        dom.dropZone.classList.remove('hover');
-      });
-      dom.dropZone.addEventListener('drop', (evt) => {
-        evt.preventDefault();
-        dom.dropZone.classList.remove('hover');
-        handleFileSelection(evt.dataTransfer?.files || []);
-      });
+          <section className=\"card\" style={{ marginTop: '1rem' }}>
+            <h2>History</h2>
+            <HistoryList history={history} />
+          </section>
 
-      dom.cgFrom.value = state.coralogix.from;
-      dom.cgTo.value = state.coralogix.to;
-      dom.cgLimit.value = String(state.coralogix.limit);
+          <CoralogixPanel onSearch={searchCoralogix} state={coralogixState} setState={setCoralogixState} />
 
-      dom.cgFrom.addEventListener('change', (e) => {
-        state.coralogix.from = e.target.value;
-      });
-      dom.cgTo.addEventListener('change', (e) => {
-        state.coralogix.to = e.target.value;
-      });
-      dom.cgLimit.addEventListener('change', (e) => {
-        state.coralogix.limit = parseInt(e.target.value, 10) || 20;
-        state.coralogix.page = 1;
-        renderCoralogix();
-      });
-      dom.cgQuery.addEventListener('input', (e) => {
-        state.coralogix.query = e.target.value;
-      });
-      dom.cgApi.addEventListener('input', (e) => {
-        state.coralogix.apiKey = e.target.value;
-      });
-      dom.cgSummary.addEventListener('change', (e) => {
-        state.coralogix.useSummary = e.target.checked;
-      });
-      dom.cgPrev.addEventListener('click', () => {
-        state.coralogix.page = Math.max(1, state.coralogix.page - 1);
-        renderCoralogix();
-      });
-      dom.cgNext.addEventListener('click', () => {
-        const totalPages = Math.max(1, Math.ceil(Math.max(state.coralogix.results.length, 1) / state.coralogix.limit));
-        state.coralogix.page = Math.min(totalPages, state.coralogix.page + 1);
-        renderCoralogix();
-      });
-      dom.cgSearch.addEventListener('click', searchCoralogix);
+          <footer>
+            Drop your logs to see a quick summary of findings. Remote queries use Coralogix via your configured credentials.
+          </footer>
+        </div>
+      );
+    };
 
-      initTheme();
-      loadSession();
-      renderResults();
-      renderCoralogix();
-    })();
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
   </script>
 </body>
 </html>
-
-"""
 
 HISTORY_LIMIT = 20
 _history: List[dict] = []
@@ -1044,13 +1069,10 @@ def _local_summary_payload(report: AnalysisReport) -> dict:
 def _assistant_prompt(report: AnalysisReport) -> str:
     header = _summarize(report)
     if not report.findings:
-        return "\n".join(
-            [
-                f"Local summary: {header}",
-                "",
-                "No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take.",
-            ]
-        )
+        prompt = f"""Local summary: {header}
+
+        No explicit error patterns were found in the provided logs. Suggest a short list of health checks or preventative steps the user can take."""
+        return textwrap.dedent(prompt).strip()
 
     sample = []
     for finding in report.findings[:8]:
@@ -1058,20 +1080,16 @@ def _assistant_prompt(report: AnalysisReport) -> str:
             f"{finding.source}:{finding.line_no} | {finding.category} | {finding.line[:240]}"
         )
 
-    prompt_lines = [
-        f"Local summary: {header}",
-        "",
-        "Here are representative log excerpts:",
-    ]
-    prompt_lines.extend("- " + line for line in sample)
-    prompt_lines.extend(
-        [
-            "",
-            "Provide 2-4 concise remediation recommendations tailored to these findings.",
-        ]
-    )
+    prompt = f"""Local summary: {header}
 
-    return "\n".join(prompt_lines)
+    Here are representative log excerpts:
+    {chr(10).join('- ' + line for line in sample)}
+
+    Provide 2-4 concise remediation recommendations tailored to these findings."""
+
+    return textwrap.dedent(prompt).strip()
+
+    return prompt
 
 
 def _call_chatgpt(report: AnalysisReport) -> tuple[str | None, str | None]:
